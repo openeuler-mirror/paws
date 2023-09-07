@@ -25,22 +25,33 @@ type MetricProviderSpec struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:defaulter-gen=true
+
+type TargetMetricSpec struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// MetricLabel from the metric provider
+	MetricLabel string
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TemporalUtilizationArgs holds arguments used to configure TemporalUtilization plugin.
 type TemporalUtilizationArgs struct {
 	metav1.TypeMeta
 
-	// BEPercentile value to sample for the BE jobs
-	BEPercentile int32
-	// LCPercentile value to sample for the LC jobs
-	LCPercentile int32
+	// BestEffortPercentile value to sample for the BE jobs
+	BestEffortPercentile int32
+	// LatencyCriticalPercentile value to sample for the LC jobs
+	LatencyCriticalPercentile int32
 
 	// Metric Provider to use when using load watcher as a library
 	MetricProvider MetricProviderSpec
 	// Address of load watcher service
 	WatcherAddress string
-	// TargetMetricLabels for a list of labels to fetch
-	TargetMetricLabels []string
+	// TargetMetrics to query the metric provider for
+	TargetMetrics []TargetMetricSpec
 	// HotSpot threshold for disallowing scores
 	HotSpotThreshold float64
 }
+
