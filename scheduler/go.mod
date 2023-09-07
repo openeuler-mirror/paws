@@ -1,12 +1,14 @@
 module gitee.com/openeuler/paws/scheduler
 
-go 1.21.0
+go 1.18
 
 require (
 	k8s.io/apimachinery v0.28.1
+	k8s.io/client-go v0.28.1
 	k8s.io/code-generator v0.28.1
 	k8s.io/component-base v0.28.1
 	k8s.io/klog/hack/tools v0.0.0-20220614110733-6b3fb0b85416
+	k8s.io/kube-scheduler v0.28.1
 	k8s.io/kubernetes v1.28.1
 )
 
@@ -103,7 +105,6 @@ require (
 	k8s.io/api v0.28.1 // indirect
 	k8s.io/apiextensions-apiserver v0.28.1 // indirect
 	k8s.io/apiserver v0.28.1 // indirect
-	k8s.io/client-go v0.28.1 // indirect
 	k8s.io/cloud-provider v0.28.1 // indirect
 	k8s.io/component-helpers v0.28.1 // indirect
 	k8s.io/controller-manager v0.28.1 // indirect
@@ -113,7 +114,6 @@ require (
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kms v0.28.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
-	k8s.io/kube-scheduler v0.28.1 // indirect
 	k8s.io/kubelet v0.28.1 // indirect
 	k8s.io/mount-utils v0.28.1 // indirect
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2 // indirect
