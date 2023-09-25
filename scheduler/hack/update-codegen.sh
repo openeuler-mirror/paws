@@ -41,10 +41,5 @@ bash "${CODEGEN_PKG}"/generate-internal-groups.sh \
   "config:v1beta3" \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate/boilerplate.generatego.txt
 
-
 ${CONTROLLER_GEN} object:headerFile="hack/boilerplate/boilerplate.generatego.txt" \
 paths="./apis/scheduling/..."
-
-# ${CONTROLLER_GEN} ${CRD_OPTIONS} rbac:roleName=work-manager webhook \
-# paths="./apis/scheduling/..." output:crd:artifacts:config=config/crd/bases
-
