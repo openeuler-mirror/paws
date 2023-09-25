@@ -82,29 +82,9 @@ plugins:
         enableOvercommit: true
 ```
 
-
 ## Limitations
 
-This feature operates on a per hour level forecast (i.e. value in the utilization template) and taking the configured percentile of the pod usages. The potential limitations are:
+This feature operates on a per hour level forecast (i.e. value in the utilization template) and taking the configured percentile of the application usages. The potential limitations are:
 
 - ignoring machine type can lead to overestimate of usages
-
-
-## TODOs
-
-- [x] Implement scheduler logic
-    - [x] controller specifically check for pods/containers that do not run for more than 24hrs, and use shifting as a main scheduling approach
-    - [x] The usage template should distinguish this by design, if the container never runs more than 24 hrs, then just start by 0,1,2,3.
-    - [x] Scheduler logic that read from status and do the scheduling
-    - [x] Write unit tests to test scheduler logic
-- [x] Make the periodic evaluation logic to be sequential instead of concurrent to minimize overhead, i.e. delay is okay, but overhead is not so much
-- [x] Add validation for period hours/days for the crd
-- [x] Added overcommit for filtering in order to maximize resource utilization improvement during packing
-- [ ] Do we need to consider holidays ? How ?
-- [ ] build usage template per machine type
-- [ ] more resource types
-- [ ] Incorporate confidence in estimation
-- [ ] Add metric for each evaluation carried out (latency)
-- [ ] Add metric for evaluation queue counts (counter)
-- [ ] Add secure TLS option to connect to prometheus
-- [ ] Add Mockgen to run integration test for the controller
+- the percentile are based on the containers that are part of an application and hence can lead to overestimation
