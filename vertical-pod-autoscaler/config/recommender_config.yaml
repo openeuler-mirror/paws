@@ -1,0 +1,16 @@
+RECOMMENDER_NAME: 'paws-recommender'
+DEFAULT_NAMESPACE: 'default'
+##USE IN NON-DEV ENV: use below if you are running within a cluster i.e deploy yaml file files
+PROM_URL: 'REPLACE WITH PROM URL' #Example http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090'
+PROM_TOKEN: ''
+HISTORY_LENGTH: 86400
+FORECASTING_DAYS: 7
+# Configure the recommender to run every minute
+SLEEP_WINDOW: 60
+STEP_SIZE_DEFAULT: '60s'
+STEP_SIZE_THROTTLE: '60s'
+
+DEBUG: False
+# These  two config variables can be overwritten by (diurnal_length_sec, update_interval_sec) labels in the vpa object
+DEFAULT_VPA_UPDATE_INTERVAL: 600 # 600 seconds i.e. ten minutes
+DEFAULT_DIURNAL_LENGTH: 86400 # i.e. 24 hours
