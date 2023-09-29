@@ -1,0 +1,9 @@
+kubernetes==21.7.0
+matplotlib~=3.7.0
+numpy~=1.23.5
+PyYAML==6.0
+requests==2.27.1
+scikit-learn~=1.0.2
+scipy~=1.10.0
+pause~=0.3
+pandas~=1.5.2
