@@ -1,0 +1,30 @@
+#The YAML will deploy a VPA object for redis deployment
+apiVersion: "autoscaling.k8s.io/v1"
+kind: VerticalPodAutoscaler
+metadata:
+  name: redis-vpa
+  namespace: vpa-demo # Must exist in cluster
+  labels:
+    update_interval_sec: "60"
+    weight: "0.75" #OPTIONAL
+spec:
+  recommenders:
+#    this should match a recommender that is deployed in the cluster e.g. run kubectl get pod -n kube-system | grep ''
+    - name: RECOMMENDER_NAME
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: redis
+  updatePolicy:
+    updateMode: Auto
+    minReplicas: 1
+  resourcePolicy:
+    containerPolicies:
+      - containerName: 'redis'
+        minAllowed:
+          cpu: 100m
+          memory: 50Mi
+        maxAllowed:
+          cpu: 5
+          memory: 5000Mi
+        controlledResources: ["cpu"]
