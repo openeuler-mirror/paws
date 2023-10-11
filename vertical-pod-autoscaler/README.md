@@ -1,6 +1,8 @@
 # Table of Contents
 1. [Repository Overview](#repository-overview)
 2. [Architecture](#architecture)
+3. [Installation](#installation)
+4. [Algorithm Description](#algorithm-description)
 
 # Repository Overview
 
@@ -21,4 +23,5 @@ The main components of the PAWS-VPA are:
 # Installation
 For installation instructions please visit [Installation](docs/install.md)
 
-
+# Algorithm Description
+For detailed description of our VPA algorithm, please refer to our [algorithm](docs/algorithm.md) guide.
