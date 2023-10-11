@@ -1,15 +1,15 @@
 FROM python:3.8-slim
 
-ADD algorithm /sir_vpa/algorithm
-ADD config /sir_vpa/config
-ADD core /sir_vpa/core
-ADD utils /sir_vpa/utils
-ADD *.py /sir_vpa/
-ADD *.txt /sir_vpa/
-ADD *.yaml /sir_vpa/
-RUN cd /sir_vpa && pip install -r requirements.txt
+ADD algorithm /paws/algorithm
+ADD config /paws/config
+ADD core /paws/core
+ADD utils /paws/utils
+ADD *.py /paws/
+ADD *.txt /paws/
+ADD *.yaml /paws/
+RUN cd /paws && pip install -r requirements.txt
 
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH "${PYTHONPATH}:/sir_vpa/"
+ENV PYTHONPATH "${PYTHONPATH}:/paws/"
 
-CMD [ "python", "/sir_vpa/main.py"]
+CMD [ "python", "/paws/main.py"]
