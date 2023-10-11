@@ -10,7 +10,7 @@ metadata:
 spec:
   recommenders:
 #    this should match a recommender that is deployed in the cluster e.g. run kubectl get pod -n kube-system | grep ''
-    - name: RECOMMENDER_NAME
+    - name: paws-recommender
   targetRef:
     apiVersion: "apps/v1"
     kind: Deployment

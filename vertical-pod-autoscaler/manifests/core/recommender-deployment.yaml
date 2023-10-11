@@ -65,20 +65,20 @@ roleRef:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: recommender-name
+  name: paws-recommender
   namespace: kube-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: recommender-name
+      app: paws-recommender
   template:
     metadata:
       labels:
-        app: recommender-name
+        app: paws-recommender
     spec:
       containers:
-        - name: recommender-name
+        - name: paws-recommender
           image: docker.io/sneceesay77/paws:v1.0.0 # Replace this accordingly
           imagePullPolicy: Always
       serviceAccountName: predictive-core
