@@ -1,6 +1,8 @@
 # Table of Contents
 1. [Repository Overview](#repository-overview)
 2. [Architecture](#architecture)
+3. [Installation](#installation)
+4. [Algorithm Description](#algorithm-description)
 
 # Repository Overview
 
