@@ -18,8 +18,6 @@ spec:
     matchLabels:
       app: redis
       release: redis-exporter
-  podTargetLabels:
-  - job-pkl-path
 ---
 apiVersion: v1
 kind: Service
@@ -29,7 +27,6 @@ metadata:
   labels:
     app: redis
     release: redis-exporter
-    job-pkl-path: test
   annotations:
     prometheus.io/scrape: 'true'
     prometheus.io/port: "9121"
