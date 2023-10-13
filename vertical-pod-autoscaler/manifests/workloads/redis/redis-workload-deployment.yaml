@@ -1,0 +1,123 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    release: kube-prometheus-stack
+  name: redis-metrics
+  namespace: monitoring
+spec:
+  endpoints:
+  - interval: 15s
+    port: metrics
+    scheme: http
+    path: /metrics
+  namespaceSelector:
+    matchNames:
+    - demo
+  selector:
+    matchLabels:
+      app: redis
+      release: redis-exporter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpa-demo
+  namespace: demo
+  labels:
+    app: redis
+    release: redis-exporter
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: "9121"
+spec:
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  - name: metrics
+    port: 9121
+    protocol: TCP
+    targetPort: 9121
+  selector:
+    app: redis
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-exporter-config
+  namespace: demo
+data:
+  redis-config: |
+    latency-tracking-info-percentiles "50 95 99 99.9"
+    port 6379
+    maxclients 60000
+    protected-mode no
+    daemonize no
+    loadmodule /opt/redis-stack/lib/redisearch.so
+    loadmodule /opt/redis-stack/lib/redisgraph.so
+    loadmodule /opt/redis-stack/lib/redistimeseries.so
+    loadmodule /opt/redis-stack/lib/rejson.so
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: demo
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+      labels:
+        app: redis
+    spec:
+      priorityClassName: high
+      containers:
+      - name: redis
+        image: redis/redis-stack-server:7.0.2-RC3
+        command:
+          - redis-server
+          - "/redis-master/redis.conf"
+        resources:
+          requests:
+            cpu: 5000m
+            memory: 5000Mi
+          limits:
+            cpu: 5000m
+            memory: 5000Mi
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+          - name: exporter-config
+            mountPath: /redis-master
+      - name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        securityContext:
+          runAsUser: 59000
+          runAsGroup: 59000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1000Mi
+          limits:
+            cpu: 1000m
+            memory: 1000Mi
+        ports:
+        - containerPort: 9121
+      volumes:
+        - name: exporter-config
+          configMap:
+            name: redis-exporter-config
+            items:
+            - key: redis-config
+              path: redis.conf

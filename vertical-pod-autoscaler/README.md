@@ -25,3 +25,7 @@ For installation instructions please visit [Installation](docs/install.md)
 
 # Algorithm Description
 For detailed description of our VPA algorithm, please refer to our [algorithm](docs/algorithm.md) guide.
+
+
+# Credit
+Part of this work is inspired by [Openshift's VPA work](https://github.com/openshift/predictive-vpa-recommenders)
