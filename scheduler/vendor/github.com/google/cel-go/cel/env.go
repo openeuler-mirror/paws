@@ -109,11 +109,10 @@ type Env struct {
 	prsrOpts []parser.Option
 
 	// Internal checker representation
-	chkMutex sync.Mutex
-	chk      *checker.Env
-	chkErr   error
-	chkOnce  sync.Once
-	chkOpts  []checker.Option
+	chk     *checker.Env
+	chkErr  error
+	chkOnce sync.Once
+	chkOpts []checker.Option
 
 	// Program options tied to the environment
 	progOpts []ProgramOption
@@ -179,14 +178,14 @@ func (e *Env) Check(ast *Ast) (*Ast, *Issues) {
 	pe, _ := AstToParsedExpr(ast)
 
 	// Construct the internal checker env, erroring if there is an issue adding the declarations.
-	chk, err := e.initChecker()
+	err := e.initChecker()
 	if err != nil {
 		errs := common.NewErrors(ast.Source())
-		errs.ReportError(common.NoLocation, err.Error())
+		errs.ReportError(common.NoLocation, e.chkErr.Error())
 		return nil, NewIssues(errs)
 	}
 
-	res, errs := checker.Check(pe, ast.Source(), chk)
+	res, errs := checker.Check(pe, ast.Source(), e.chk)
 	if len(errs.GetErrors()) > 0 {
 		return nil, NewIssues(errs)
 	}
@@ -240,9 +239,8 @@ func (e *Env) CompileSource(src Source) (*Ast, *Issues) {
 // TypeProvider are immutable, or that their underlying implementations are based on the
 // ref.TypeRegistry which provides a Copy method which will be invoked by this method.
 func (e *Env) Extend(opts ...EnvOption) (*Env, error) {
-	chk, chkErr := e.getCheckerOrError()
-	if chkErr != nil {
-		return nil, chkErr
+	if e.chkErr != nil {
+		return nil, e.chkErr
 	}
 
 	prsrOptsCopy := make([]parser.Option, len(e.prsrOpts))
@@ -256,10 +254,10 @@ func (e *Env) Extend(opts ...EnvOption) (*Env, error) {
 
 	// Copy the declarations if needed.
 	decsCopy := []*exprpb.Decl{}
-	if chk != nil {
+	if e.chk != nil {
 		// If the type-checker has already been instantiated, then the e.declarations have been
-		// validated within the chk instance.
-		chkOptsCopy = append(chkOptsCopy, checker.ValidatedDeclarations(chk))
+		// valdiated within the chk instance.
+		chkOptsCopy = append(chkOptsCopy, checker.ValidatedDeclarations(e.chk))
 	} else {
 		// If the type-checker has not been instantiated, ensure the unvalidated declarations are
 		// provided to the extended Env instance.
@@ -441,8 +439,8 @@ func (e *Env) UnknownVars() interpreter.PartialActivation {
 // TODO: Consider adding an option to generate a Program.Residual to avoid round-tripping to an
 // Ast format and then Program again.
 func (e *Env) ResidualAst(a *Ast, details *EvalDetails) (*Ast, error) {
-	pruned := interpreter.PruneAst(a.Expr(), a.SourceInfo().GetMacroCalls(), details.State())
-	expr, err := AstToString(ParsedExprToAst(pruned))
+	pruned := interpreter.PruneAst(a.Expr(), details.State())
+	expr, err := AstToString(ParsedExprToAst(&exprpb.ParsedExpr{Expr: pruned}))
 	if err != nil {
 		return nil, err
 	}
@@ -462,12 +460,12 @@ func (e *Env) ResidualAst(a *Ast, details *EvalDetails) (*Ast, error) {
 
 // EstimateCost estimates the cost of a type checked CEL expression using the length estimates of input data and
 // extension functions provided by estimator.
-func (e *Env) EstimateCost(ast *Ast, estimator checker.CostEstimator, opts ...checker.CostOption) (checker.CostEstimate, error) {
+func (e *Env) EstimateCost(ast *Ast, estimator checker.CostEstimator) (checker.CostEstimate, error) {
 	checked, err := AstToCheckedExpr(ast)
 	if err != nil {
 		return checker.CostEstimate{}, fmt.Errorf("EsimateCost could not inspect Ast: %v", err)
 	}
-	return checker.Cost(checked, estimator, opts...)
+	return checker.Cost(checked, estimator), nil
 }
 
 // configure applies a series of EnvOptions to the current environment.
@@ -511,7 +509,7 @@ func (e *Env) configure(opts []EnvOption) (*Env, error) {
 
 	// Ensure that the checker init happens eagerly rather than lazily.
 	if e.HasFeature(featureEagerlyValidateDeclarations) {
-		_, err := e.initChecker()
+		err := e.initChecker()
 		if err != nil {
 			return nil, err
 		}
@@ -520,7 +518,7 @@ func (e *Env) configure(opts []EnvOption) (*Env, error) {
 	return e, nil
 }
 
-func (e *Env) initChecker() (*checker.Env, error) {
+func (e *Env) initChecker() error {
 	e.chkOnce.Do(func() {
 		chkOpts := []checker.Option{}
 		chkOpts = append(chkOpts, e.chkOpts...)
@@ -532,47 +530,32 @@ func (e *Env) initChecker() (*checker.Env, error) {
 
 		ce, err := checker.NewEnv(e.Container, e.provider, chkOpts...)
 		if err != nil {
-			e.setCheckerOrError(nil, err)
+			e.chkErr = err
 			return
 		}
 		// Add the statically configured declarations.
 		err = ce.Add(e.declarations...)
 		if err != nil {
-			e.setCheckerOrError(nil, err)
+			e.chkErr = err
 			return
 		}
 		// Add the function declarations which are derived from the FunctionDecl instances.
 		for _, fn := range e.functions {
 			fnDecl, err := functionDeclToExprDecl(fn)
 			if err != nil {
-				e.setCheckerOrError(nil, err)
+				e.chkErr = err
 				return
 			}
 			err = ce.Add(fnDecl)
 			if err != nil {
-				e.setCheckerOrError(nil, err)
+				e.chkErr = err
 				return
 			}
 		}
 		// Add function declarations here separately.
-		e.setCheckerOrError(ce, nil)
+		e.chk = ce
 	})
-	return e.getCheckerOrError()
-}
-
-// setCheckerOrError sets the checker.Env or error state in a concurrency-safe manner
-func (e *Env) setCheckerOrError(chk *checker.Env, chkErr error) {
-	e.chkMutex.Lock()
-	e.chk = chk
-	e.chkErr = chkErr
-	e.chkMutex.Unlock()
-}
-
-// getCheckerOrError gets the checker.Env or error state in a concurrency-safe manner
-func (e *Env) getCheckerOrError() (*checker.Env, error) {
-	e.chkMutex.Lock()
-	defer e.chkMutex.Unlock()
-	return e.chk, e.chkErr
+	return e.chkErr
 }
 
 // maybeApplyFeature determines whether the feature-guarded option is enabled, and if so applies

@@ -91,7 +91,7 @@ func Math() cel.EnvOption {
 	return cel.Lib(mathLib{})
 }
 
-const (
+var (
 	mathNamespace = "math"
 	leastMacro    = "least"
 	greatestMacro = "greatest"
