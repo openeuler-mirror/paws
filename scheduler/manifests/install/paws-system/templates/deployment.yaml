@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.controller.name }}
+  namespace: {{ .Release.namespace }}
+  labels:
+    app: paws-controller
+spec:
+  replicas: {{ .Values.controller.replicaCount }}
+  selector:
+    matchLabels:
+      app: paws-controller
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: paws-controller
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.controller.name }}
+      {{- with .Values.experimentTolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8}}
+      {{- end }}
+      containers:
+        - name: paws-controller
+          image: "{{ .Values.controller.image }}"
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          command:
+          - /bin/controller
+          - --v={{ .Values.controller.verbosity | default 4 }}
+          - --prometheusAddress={{ .Values.prometheusAddress }}
+          ports:
+          - containerPort: 8080
+            name: metrics
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 25
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 20
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.scheduler.name }}
+  namespace: {{ .Release.namespace }}
+  labels:
+    app: paws-scheduler
+spec:
+  replicas: {{ .Values.scheduler.replicaCount }}
+  selector:
+    matchLabels:
+      app: paws-scheduler
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: paws-scheduler
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.scheduler.name }}
+      {{- with .Values.experimentTolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8}}
+      {{- end }}
+      containers:
+        - name: paws-scheduler
+          image: "{{ .Values.scheduler.image }}"
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.scheduler.resources | nindent 12 }}
+          command:
+          - /bin/paws-scheduler
+          - --config=/etc/kubernetes/scheduler-config.yaml
+          - --v={{ .Values.scheduler.verbosity | default 4 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10259
+              scheme: HTTPS
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10259
+              scheme: HTTPS
+          securityContext:
+            privileged: false
+          volumeMounts:
+          - name: scheduler-config
+            mountPath: /etc/kubernetes
+            readOnly: true
+      hostNetwork: false
+      hostPID: false
+      volumes:
+      - name: scheduler-config
+        configMap:
+          name: scheduler-config
+      

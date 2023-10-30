@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 paws licensed under the Mulan PSL v2.
 You can use this software according to the terms and conditions of the Mulan PSL v2.
@@ -22,13 +22,16 @@ import (
 
 	// Ensure scheme package is initialized.
 	_ "gitee.com/openeuler/paws/scheduler/apis/config/scheme"
+	tu "gitee.com/openeuler/paws/scheduler/pkg/temporalutilization"
 )
 
 func main() {
 	// Register custom plugins to the scheduler framework.
 	// Later they can consist of scheduler profile(s) and hence
 	// used by various kinds of workloads.
-	command := app.NewSchedulerCommand()
+	command := app.NewSchedulerCommand(
+		app.WithPlugin(tu.Name, tu.New),
+	)
 
 	code := cli.Run(command)
 	os.Exit(code)

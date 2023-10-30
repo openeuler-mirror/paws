@@ -1,0 +1,180 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  creationTimestamp: null
+  name: usagetemplates.scheduling.x-k8s.io
+spec:
+  group: scheduling.x-k8s.io
+  names:
+    kind: UsageTemplate
+    listKind: UsageTemplateList
+    plural: usagetemplates
+    shortNames:
+    - ut
+    - uts
+    singular: usagetemplate
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: UsageTemplate is the configuration for requesting a evaluation
+          of a usage template based on real time resource usages
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: UsageTemplateSpec is the specification for UT
+            properties:
+              enabled:
+                description: Enabled allow scheduler to interpret whether to use the
+                  evaluated values for scheduling
+                type: boolean
+              evaluatePeriodHours:
+                description: EvaluatePeriodHours specify the desire evaluation period
+                  minutes for this specific UT, default to 6 hours
+                format: int32
+                type: integer
+              evaluationWindowDays:
+                description: EvaluationWindow specify the desire time window in days
+                  for this specific UT, default to 14 days
+                type: integer
+              filters:
+                description: Filters to specify how to look for an application pods,
+                  i.e. "k=v,k!=v,k~=v" we are not using the k8s labelSelector because
+                  a few labelExpression are not supported in prometheus
+                items:
+                  type: string
+                type: array
+              joinFilters:
+                description: JoinFilters to specify when the joining the metric, the
+                  right handside operation should also contain filters
+                items:
+                  type: string
+                type: array
+              joinLabels:
+                description: 'JoinLabels to specify when the metric require joining
+                  its own timeseries to acquire more labels, an example of this is
+                  when using cAdvisor with white_listed_labels, the whitelistlabels
+                  only appear on the top level container ''pause'' The following query
+                  shows such usecase: rate(container_cpu_usage_seconds_total{container!=""}[2m])
+                  * on (namespace, pod) group_left (part_of, managed_by) container_cpu_usage_seconds_total{namespace="monitoring",part_of!=""}'
+                items:
+                  type: string
+                type: array
+              qualityOfServiceClass:
+                description: PriorityClass specify whether the priority of the application
+                  follow the kubernetes convention. i.e. Guaranteed, Burstable, BestEffort
+                type: string
+              resources:
+                description: Resources specify the desire resource to evaluate for,
+                  currently supports CPU
+                items:
+                  type: string
+                type: array
+            required:
+            - filters
+            type: object
+          status:
+            description: UsageTemplateStatus describes the runtime state of the UT
+            properties:
+              conditions:
+                description: Conditions is the set of conditions required for this
+                  UT and indicates whether or not those conditions are met.
+                items:
+                  description: UsageTemplateCondition describes the state of a UsageTemplate
+                    at a certain point
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human-readable explanation containing
+                        details about the transition
+                      type: string
+                    reason:
+                      description: reason is the reason for the condition's last transition
+                      type: string
+                    status:
+                      description: Status of the condition
+                      type: string
+                    type:
+                      description: type describe the current condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              isLongRunning:
+                description: IsLongRunning indicates whether this application is long
+                  running, defined as longer than 24 hours
+                type: boolean
+              sample:
+                description: HistoricalUsage is the most recent evaluation conducted
+                  by the evaluator for the controlled pods
+                properties:
+                  items:
+                    description: Items contains historical usage per resource currently
+                      only support CPU
+                    items:
+                      description: ResourceUsage is the historical usage of a resource
+                      properties:
+                        name:
+                          description: Name of the resource
+                          type: string
+                        usages:
+                          description: Usages contains the samples for the resource
+                          items:
+                            description: Sample contains the actual usage for the
+                              particular hour
+                            properties:
+                              hour:
+                                format: int32
+                                type: integer
+                              isWeekday:
+                                description: whether this is a weekday value
+                                type: boolean
+                              percentile:
+                                description: which percentile was calculated from
+                                type: string
+                              unit:
+                                description: what unit, e.g. millicore
+                                type: string
+                              value:
+                                description: the actual value represented as a string
+                                type: string
+                            required:
+                            - hour
+                            - percentile
+                            - unit
+                            - value
+                            type: object
+                          type: array
+                      required:
+                      - name
+                      - usages
+                      type: object
+                    type: array
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
