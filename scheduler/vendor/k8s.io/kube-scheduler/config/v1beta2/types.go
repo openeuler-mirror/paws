@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2021 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1beta2
 
 import (
 	"bytes"
@@ -53,6 +53,13 @@ type KubeSchedulerConfiguration struct {
 	// settings for the proxy server to use when communicating with the apiserver.
 	ClientConnection componentbaseconfigv1alpha1.ClientConnectionConfiguration `json:"clientConnection"`
 
+	// Note: Both HealthzBindAddress and MetricsBindAddress fields are deprecated.
+	// Only empty address or port 0 is allowed. Anything else will fail validation.
+	// HealthzBindAddress is the IP address and port for the health check server to serve on.
+	HealthzBindAddress *string `json:"healthzBindAddress,omitempty"`
+	// MetricsBindAddress is the IP address and port for the metrics server to serve on.
+	MetricsBindAddress *string `json:"metricsBindAddress,omitempty"`
+
 	// DebuggingConfiguration holds configuration for Debugging related features
 	// TODO: We might wanna make this a substruct like Debugging componentbaseconfigv1alpha1.DebuggingConfiguration
 	componentbaseconfigv1alpha1.DebuggingConfiguration `json:",inline"`
@@ -64,7 +71,7 @@ type KubeSchedulerConfiguration struct {
 	// Example: if the cluster size is 500 nodes and the value of this flag is 30,
 	// then scheduler stops finding further feasible nodes once it finds 150 feasible ones.
 	// When the value is 0, default percentage (5%--50% based on the size of the cluster) of the
-	// nodes will be scored. It is overridden by profile level PercentageofNodesToScore.
+	// nodes will be scored.
 	PercentageOfNodesToScore *int32 `json:"percentageOfNodesToScore,omitempty"`
 
 	// PodInitialBackoffSeconds is the initial backoff for unschedulable pods.
@@ -135,17 +142,6 @@ type KubeSchedulerProfile struct {
 	// is scheduled with this profile.
 	SchedulerName *string `json:"schedulerName,omitempty"`
 
-	// PercentageOfNodesToScore is the percentage of all nodes that once found feasible
-	// for running a pod, the scheduler stops its search for more feasible nodes in
-	// the cluster. This helps improve scheduler's performance. Scheduler always tries to find
-	// at least "minFeasibleNodesToFind" feasible nodes no matter what the value of this flag is.
-	// Example: if the cluster size is 500 nodes and the value of this flag is 30,
-	// then scheduler stops finding further feasible nodes once it finds 150 feasible ones.
-	// When the value is 0, default percentage (5%--50% based on the size of the cluster) of the
-	// nodes will be scored. It will override global PercentageOfNodesToScore. If it is empty,
-	// global PercentageOfNodesToScore will be used.
-	PercentageOfNodesToScore *int32 `json:"percentageOfNodesToScore,omitempty"`
-
 	// Plugins specify the set of plugins that should be enabled or disabled.
 	// Enabled plugins are the ones that should be enabled in addition to the
 	// default plugins. Disabled plugins are any of the default plugins that
@@ -209,21 +205,6 @@ type Plugins struct {
 	PostBind PluginSet `json:"postBind,omitempty"`
 
 	// MultiPoint is a simplified config section to enable plugins for all valid extension points.
-	// Plugins enabled through MultiPoint will automatically register for every individual extension
-	// point the plugin has implemented. Disabling a plugin through MultiPoint disables that behavior.
-	// The same is true for disabling "*" through MultiPoint (no default plugins will be automatically registered).
-	// Plugins can still be disabled through their individual extension points.
-	//
-	// In terms of precedence, plugin config follows this basic hierarchy
-	//   1. Specific extension points
-	//   2. Explicitly configured MultiPoint plugins
-	//   3. The set of default plugins, as MultiPoint plugins
-	// This implies that a higher precedence plugin will run first and overwrite any settings within MultiPoint.
-	// Explicitly user-configured plugins also take a higher precedence over default plugins.
-	// Within this hierarchy, an Enabled setting takes precedence over Disabled. For example, if a plugin is
-	// set in both `multiPoint.Enabled` and `multiPoint.Disabled`, the plugin will be enabled. Similarly,
-	// including `multiPoint.Disabled = '*'` and `multiPoint.Enabled = pluginA` will still register that specific
-	// plugin through MultiPoint. This follows the same behavior as all other extension point configurations.
 	MultiPoint PluginSet `json:"multiPoint,omitempty"`
 }
 
@@ -378,14 +359,11 @@ type ExtenderTLSConfig struct {
 
 	// CertData holds PEM-encoded bytes (typically read from a client certificate file).
 	// CertData takes precedence over CertFile
-	// +listType=atomic
 	CertData []byte `json:"certData,omitempty"`
 	// KeyData holds PEM-encoded bytes (typically read from a client certificate key file).
 	// KeyData takes precedence over KeyFile
-	// +listType=atomic
 	KeyData []byte `json:"keyData,omitempty"`
 	// CAData holds PEM-encoded bytes (typically read from a root certificates bundle).
 	// CAData takes precedence over CAFile
-	// +listType=atomic
 	CAData []byte `json:"caData,omitempty"`
 }
