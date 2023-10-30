@@ -14,11 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// To regenerate api.pb.go run `hack/update-codegen.sh protobindings`
+// To regenerate api.pb.go run hack/update-generated-kms.sh
 syntax = "proto3";
 
-package v2;
-option go_package = "k8s.io/kms/apis/v2";
+package v2alpha1;
 
 // This service defines the public APIs for remote KMS provider.
 service KeyManagementService {
@@ -73,6 +72,7 @@ message EncryptResponse {
     // This can be used to inform staleness of data updated via value.Transformer.TransformFromStorage.
     string key_id = 2;
     // Additional metadata to be stored with the encrypted data.
+    // This metadata can contain the encrypted local KEK that was used to encrypt the DEK.
     // This data is stored in plaintext in etcd. KMS plugin implementations are responsible for pre-encrypting any sensitive data.
     map<string, bytes> annotations = 3;
 }
