@@ -23,38 +23,39 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	v1alpha2 "k8s.io/api/resource/v1alpha2"
+	v1alpha1 "k8s.io/api/resource/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	resourcev1alpha2 "k8s.io/client-go/applyconfigurations/resource/v1alpha2"
+	resourcev1alpha1 "k8s.io/client-go/applyconfigurations/resource/v1alpha1"
 	testing "k8s.io/client-go/testing"
 )
 
 // FakeResourceClasses implements ResourceClassInterface
 type FakeResourceClasses struct {
-	Fake *FakeResourceV1alpha2
+	Fake *FakeResourceV1alpha1
 }
 
-var resourceclassesResource = v1alpha2.SchemeGroupVersion.WithResource("resourceclasses")
+var resourceclassesResource = schema.GroupVersionResource{Group: "resource.k8s.io", Version: "v1alpha1", Resource: "resourceclasses"}
 
-var resourceclassesKind = v1alpha2.SchemeGroupVersion.WithKind("ResourceClass")
+var resourceclassesKind = schema.GroupVersionKind{Group: "resource.k8s.io", Version: "v1alpha1", Kind: "ResourceClass"}
 
 // Get takes name of the resourceClass, and returns the corresponding resourceClass object, and an error if there is any.
-func (c *FakeResourceClasses) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha2.ResourceClass, err error) {
+func (c *FakeResourceClasses) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ResourceClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(resourceclassesResource, name), &v1alpha2.ResourceClass{})
+		Invokes(testing.NewRootGetAction(resourceclassesResource, name), &v1alpha1.ResourceClass{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ResourceClass), err
+	return obj.(*v1alpha1.ResourceClass), err
 }
 
 // List takes label and field selectors, and returns the list of ResourceClasses that match those selectors.
-func (c *FakeResourceClasses) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha2.ResourceClassList, err error) {
+func (c *FakeResourceClasses) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ResourceClassList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(resourceclassesResource, resourceclassesKind, opts), &v1alpha2.ResourceClassList{})
+		Invokes(testing.NewRootListAction(resourceclassesResource, resourceclassesKind, opts), &v1alpha1.ResourceClassList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -63,8 +64,8 @@ func (c *FakeResourceClasses) List(ctx context.Context, opts v1.ListOptions) (re
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha2.ResourceClassList{ListMeta: obj.(*v1alpha2.ResourceClassList).ListMeta}
-	for _, item := range obj.(*v1alpha2.ResourceClassList).Items {
+	list := &v1alpha1.ResourceClassList{ListMeta: obj.(*v1alpha1.ResourceClassList).ListMeta}
+	for _, item := range obj.(*v1alpha1.ResourceClassList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -79,29 +80,29 @@ func (c *FakeResourceClasses) Watch(ctx context.Context, opts v1.ListOptions) (w
 }
 
 // Create takes the representation of a resourceClass and creates it.  Returns the server's representation of the resourceClass, and an error, if there is any.
-func (c *FakeResourceClasses) Create(ctx context.Context, resourceClass *v1alpha2.ResourceClass, opts v1.CreateOptions) (result *v1alpha2.ResourceClass, err error) {
+func (c *FakeResourceClasses) Create(ctx context.Context, resourceClass *v1alpha1.ResourceClass, opts v1.CreateOptions) (result *v1alpha1.ResourceClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(resourceclassesResource, resourceClass), &v1alpha2.ResourceClass{})
+		Invokes(testing.NewRootCreateAction(resourceclassesResource, resourceClass), &v1alpha1.ResourceClass{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ResourceClass), err
+	return obj.(*v1alpha1.ResourceClass), err
 }
 
 // Update takes the representation of a resourceClass and updates it. Returns the server's representation of the resourceClass, and an error, if there is any.
-func (c *FakeResourceClasses) Update(ctx context.Context, resourceClass *v1alpha2.ResourceClass, opts v1.UpdateOptions) (result *v1alpha2.ResourceClass, err error) {
+func (c *FakeResourceClasses) Update(ctx context.Context, resourceClass *v1alpha1.ResourceClass, opts v1.UpdateOptions) (result *v1alpha1.ResourceClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(resourceclassesResource, resourceClass), &v1alpha2.ResourceClass{})
+		Invokes(testing.NewRootUpdateAction(resourceclassesResource, resourceClass), &v1alpha1.ResourceClass{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ResourceClass), err
+	return obj.(*v1alpha1.ResourceClass), err
 }
 
 // Delete takes name of the resourceClass and deletes it. Returns an error if one occurs.
 func (c *FakeResourceClasses) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(resourceclassesResource, name, opts), &v1alpha2.ResourceClass{})
+		Invokes(testing.NewRootDeleteActionWithOptions(resourceclassesResource, name, opts), &v1alpha1.ResourceClass{})
 	return err
 }
 
@@ -109,22 +110,22 @@ func (c *FakeResourceClasses) Delete(ctx context.Context, name string, opts v1.D
 func (c *FakeResourceClasses) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	action := testing.NewRootDeleteCollectionAction(resourceclassesResource, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v1alpha2.ResourceClassList{})
+	_, err := c.Fake.Invokes(action, &v1alpha1.ResourceClassList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched resourceClass.
-func (c *FakeResourceClasses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ResourceClass, err error) {
+func (c *FakeResourceClasses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ResourceClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(resourceclassesResource, name, pt, data, subresources...), &v1alpha2.ResourceClass{})
+		Invokes(testing.NewRootPatchSubresourceAction(resourceclassesResource, name, pt, data, subresources...), &v1alpha1.ResourceClass{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ResourceClass), err
+	return obj.(*v1alpha1.ResourceClass), err
 }
 
 // Apply takes the given apply declarative configuration, applies it and returns the applied resourceClass.
-func (c *FakeResourceClasses) Apply(ctx context.Context, resourceClass *resourcev1alpha2.ResourceClassApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha2.ResourceClass, err error) {
+func (c *FakeResourceClasses) Apply(ctx context.Context, resourceClass *resourcev1alpha1.ResourceClassApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ResourceClass, err error) {
 	if resourceClass == nil {
 		return nil, fmt.Errorf("resourceClass provided to Apply must not be nil")
 	}
@@ -137,9 +138,9 @@ func (c *FakeResourceClasses) Apply(ctx context.Context, resourceClass *resource
 		return nil, fmt.Errorf("resourceClass.Name must be provided to Apply")
 	}
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(resourceclassesResource, *name, types.ApplyPatchType, data), &v1alpha2.ResourceClass{})
+		Invokes(testing.NewRootPatchSubresourceAction(resourceclassesResource, *name, types.ApplyPatchType, data), &v1alpha1.ResourceClass{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha2.ResourceClass), err
+	return obj.(*v1alpha1.ResourceClass), err
 }

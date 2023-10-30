@@ -21,29 +21,44 @@ package v1alpha1
 import (
 	"net/http"
 
-	v1alpha1 "k8s.io/api/certificates/v1alpha1"
+	v1alpha1 "k8s.io/api/resource/v1alpha1"
 	"k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
-type CertificatesV1alpha1Interface interface {
+type ResourceV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	ClusterTrustBundlesGetter
+	PodSchedulingsGetter
+	ResourceClaimsGetter
+	ResourceClaimTemplatesGetter
+	ResourceClassesGetter
 }
 
-// CertificatesV1alpha1Client is used to interact with features provided by the certificates.k8s.io group.
-type CertificatesV1alpha1Client struct {
+// ResourceV1alpha1Client is used to interact with features provided by the resource.k8s.io group.
+type ResourceV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CertificatesV1alpha1Client) ClusterTrustBundles() ClusterTrustBundleInterface {
-	return newClusterTrustBundles(c)
+func (c *ResourceV1alpha1Client) PodSchedulings(namespace string) PodSchedulingInterface {
+	return newPodSchedulings(c, namespace)
 }
 
-// NewForConfig creates a new CertificatesV1alpha1Client for the given config.
+func (c *ResourceV1alpha1Client) ResourceClaims(namespace string) ResourceClaimInterface {
+	return newResourceClaims(c, namespace)
+}
+
+func (c *ResourceV1alpha1Client) ResourceClaimTemplates(namespace string) ResourceClaimTemplateInterface {
+	return newResourceClaimTemplates(c, namespace)
+}
+
+func (c *ResourceV1alpha1Client) ResourceClasses() ResourceClassInterface {
+	return newResourceClasses(c)
+}
+
+// NewForConfig creates a new ResourceV1alpha1Client for the given config.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
-func NewForConfig(c *rest.Config) (*CertificatesV1alpha1Client, error) {
+func NewForConfig(c *rest.Config) (*ResourceV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -55,9 +70,9 @@ func NewForConfig(c *rest.Config) (*CertificatesV1alpha1Client, error) {
 	return NewForConfigAndClient(&config, httpClient)
 }
 
-// NewForConfigAndClient creates a new CertificatesV1alpha1Client for the given config and http client.
+// NewForConfigAndClient creates a new ResourceV1alpha1Client for the given config and http client.
 // Note the http client provided takes precedence over the configured transport values.
-func NewForConfigAndClient(c *rest.Config, h *http.Client) (*CertificatesV1alpha1Client, error) {
+func NewForConfigAndClient(c *rest.Config, h *http.Client) (*ResourceV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -66,12 +81,12 @@ func NewForConfigAndClient(c *rest.Config, h *http.Client) (*CertificatesV1alpha
 	if err != nil {
 		return nil, err
 	}
-	return &CertificatesV1alpha1Client{client}, nil
+	return &ResourceV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new CertificatesV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new ResourceV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *CertificatesV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *ResourceV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -79,9 +94,9 @@ func NewForConfigOrDie(c *rest.Config) *CertificatesV1alpha1Client {
 	return client
 }
 
-// New creates a new CertificatesV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *CertificatesV1alpha1Client {
-	return &CertificatesV1alpha1Client{c}
+// New creates a new ResourceV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *ResourceV1alpha1Client {
+	return &ResourceV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -99,7 +114,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *CertificatesV1alpha1Client) RESTClient() rest.Interface {
+func (c *ResourceV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

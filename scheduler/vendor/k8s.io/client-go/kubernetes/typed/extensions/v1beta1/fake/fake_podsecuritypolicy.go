@@ -23,24 +23,24 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	v1beta1 "k8s.io/api/policy/v1beta1"
+	v1beta1 "k8s.io/api/extensions/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	policyv1beta1 "k8s.io/client-go/applyconfigurations/policy/v1beta1"
+	extensionsv1beta1 "k8s.io/client-go/applyconfigurations/extensions/v1beta1"
 	testing "k8s.io/client-go/testing"
 )
 
 // FakePodSecurityPolicies implements PodSecurityPolicyInterface
 type FakePodSecurityPolicies struct {
-	Fake *FakePolicyV1beta1
+	Fake *FakeExtensionsV1beta1
 }
 
-var podsecuritypoliciesResource = schema.GroupVersionResource{Group: "policy", Version: "v1beta1", Resource: "podsecuritypolicies"}
+var podsecuritypoliciesResource = schema.GroupVersionResource{Group: "extensions", Version: "v1beta1", Resource: "podsecuritypolicies"}
 
-var podsecuritypoliciesKind = schema.GroupVersionKind{Group: "policy", Version: "v1beta1", Kind: "PodSecurityPolicy"}
+var podsecuritypoliciesKind = schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "PodSecurityPolicy"}
 
 // Get takes name of the podSecurityPolicy, and returns the corresponding podSecurityPolicy object, and an error if there is any.
 func (c *FakePodSecurityPolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.PodSecurityPolicy, err error) {
@@ -125,7 +125,7 @@ func (c *FakePodSecurityPolicies) Patch(ctx context.Context, name string, pt typ
 }
 
 // Apply takes the given apply declarative configuration, applies it and returns the applied podSecurityPolicy.
-func (c *FakePodSecurityPolicies) Apply(ctx context.Context, podSecurityPolicy *policyv1beta1.PodSecurityPolicyApplyConfiguration, opts v1.ApplyOptions) (result *v1beta1.PodSecurityPolicy, err error) {
+func (c *FakePodSecurityPolicies) Apply(ctx context.Context, podSecurityPolicy *extensionsv1beta1.PodSecurityPolicyApplyConfiguration, opts v1.ApplyOptions) (result *v1beta1.PodSecurityPolicy, err error) {
 	if podSecurityPolicy == nil {
 		return nil, fmt.Errorf("podSecurityPolicy provided to Apply must not be nil")
 	}
