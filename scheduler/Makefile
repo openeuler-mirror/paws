@@ -17,19 +17,18 @@ COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z)
 BUILDENVVAR=CGO_ENABLED=0
 # Specify your own local registry here
 $(warning Specify your own LOCAL_REGISTRY)
-LOCAL_REGISTRY=
-LOCAL_IMAGE=paws-scheduler:latest
-# LOCAL_CONTROLLER_IMAGE=controller:latest
+LOCAL_REGISTRY=localhost:5000
+LOCAL_CONTROLLER_IMAGE=paws-controller:latest
 
 # RELEASE_REGISTRY is the container registry to push
 # into. The default is to push to the staging
 # registry, not production(k8s.gcr.io).
 # Specify your won local registry here
 $(warning Specify your own RELEASE_REGISTRY)
-RELEASE_REGISTRY?=
-RELEASE_VERSION?=v$(shell date +%Y%m%d)-$(shell git describe --tags --match "v*")
+RELEASE_REGISTRY?=docker.io/sirlabb
+RELEASE_VERSION?=v$(shell date +%Y%m%d)-v0.0.1
 RELEASE_IMAGE:=paws-scheduler:$(RELEASE_VERSION)
-# RELEASE_CONTROLLER_IMAGE:=controller:$(RELEASE_VERSION)
+RELEASE_CONTROLLER_IMAGE:=paws-controller:$(RELEASE_VERSION)
 
 # VERSION is the scheduler's version
 #
@@ -42,7 +41,7 @@ VERSION=$(shell echo $(RELEASE_VERSION) | awk -F - '{print $$2}')
 all: build
 
 .PHONY: build
-build: build-scheduler
+build: build-scheduler build-controller
 
 .PHONY: build.amd64
 build.amd64: build-scheduler.amd64
@@ -62,17 +61,32 @@ build-scheduler.amd64:
 build-scheduler.arm64v8:
 	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/paws-scheduler cmd/paws-scheduler/main.go
 
+.PHONY: build-controller
+build-controller:
+	$(COMMONENVVAR) $(BUILDENVVAR) go build -ldflags '-w' -o bin/controller cmd/paws-controller/main.go
+
+.PHONY: build-controller.amd64
+build-controller.amd64:
+	$(COMMONENVVAR) $(BUILDENVVAR) GOARCH=amd64 go build -ldflags '-w' -o bin/controller cmd/paws-controller/main.go
+
+.PHONY: build-controller.arm64v8
+build-controller.arm64v8:
+	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -ldflags '-w' -o bin/controller cmd/paws-controller/main.go
+
 .PHONY: local-image
 local-image: clean
 	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(LOCAL_REGISTRY)/$(LOCAL_IMAGE) .
+	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH="amd64" -t $(LOCAL_REGISTRY)/$(LOCAL_CONTROLLER_IMAGE) .
 
 .PHONY: release-image.amd64
 release-image.amd64: clean
 	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-amd64 .
+	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH="amd64" -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-amd64 .
 
 .PHONY: release-image.arm64v8
 release-image.arm64v8: clean
 	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="arm64v8" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-arm64 .
+	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH="arm64v8" -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-arm64 .
 
 .PHONY: push-release-images
 push-release-images: release-image.amd64 release-image.arm64v8
