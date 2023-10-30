@@ -331,9 +331,14 @@ func NewServerTransport(conn net.Conn, config *ServerConfig) (_ ServerTransport,
 	t.handleSettings(sf)
 
 	go func() {
-		t.loopy = newLoopyWriter(serverSide, t.framer, t.controlBuf, t.bdpEst, t.conn)
+		t.loopy = newLoopyWriter(serverSide, t.framer, t.controlBuf, t.bdpEst)
 		t.loopy.ssGoAwayHandler = t.outgoingGoAwayHandler
-		t.loopy.run()
+		err := t.loopy.run()
+		if logger.V(logLevel) {
+			logger.Infof("transport: loopyWriter exited. Closing connection. Err: %v", err)
+		}
+		t.conn.Close()
+		t.controlBuf.finish()
 		close(t.writerDone)
 	}()
 	go t.keepalive()
@@ -378,7 +383,7 @@ func (t *http2Server) operateHeaders(frame *http2.MetaHeadersFrame, handle func(
 		// if false, content-type was missing or invalid
 		isGRPC      = false
 		contentType = ""
-		mdata       = make(metadata.MD, len(frame.Fields))
+		mdata       = make(map[string][]string)
 		httpMethod  string
 		// these are set if an error is encountered while parsing the headers
 		protocolError bool
@@ -399,17 +404,6 @@ func (t *http2Server) operateHeaders(frame *http2.MetaHeadersFrame, handle func(
 			mdata[hf.Name] = append(mdata[hf.Name], hf.Value)
 			s.contentSubtype = contentSubtype
 			isGRPC = true
-
-		case "grpc-accept-encoding":
-			mdata[hf.Name] = append(mdata[hf.Name], hf.Value)
-			if hf.Value == "" {
-				continue
-			}
-			compressors := hf.Value
-			if s.clientAdvertisedCompressors != "" {
-				compressors = s.clientAdvertisedCompressors + "," + compressors
-			}
-			s.clientAdvertisedCompressors = compressors
 		case "grpc-encoding":
 			s.recvCompress = hf.Value
 		case ":method":
@@ -601,7 +595,7 @@ func (t *http2Server) operateHeaders(frame *http2.MetaHeadersFrame, handle func(
 			LocalAddr:   t.localAddr,
 			Compression: s.recvCompress,
 			WireLength:  int(frame.Header().Length),
-			Header:      mdata.Copy(),
+			Header:      metadata.MD(mdata).Copy(),
 		}
 		sh.HandleRPC(s.ctx, inHeader)
 	}
@@ -1350,6 +1344,9 @@ func (t *http2Server) outgoingGoAwayHandler(g *goAway) (bool, error) {
 			return false, err
 		}
 		if retErr != nil {
+			// Abruptly close the connection following the GoAway (via
+			// loopywriter).  But flush out what's inside the buffer first.
+			t.framer.writer.Flush()
 			return false, retErr
 		}
 		return true, nil

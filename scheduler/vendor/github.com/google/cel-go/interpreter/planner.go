@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/operators"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
 
@@ -216,14 +217,18 @@ func (p *planner) planSelect(expr *exprpb.Expr) (Interpretable, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Modify the attribute to be test-only.
+
+	// Return the test only eval expression.
 	if sel.GetTestOnly() {
-		attr = &evalTestOnly{
-			id:                     expr.GetId(),
-			InterpretableAttribute: attr,
-		}
+		return &evalTestOnly{
+			id:    expr.GetId(),
+			field: types.String(sel.GetField()),
+			attr:  attr,
+			qual:  qual,
+		}, nil
 	}
-	// Append the qualifier on the attribute.
+
+	// Otherwise, append the qualifier on the attribute.
 	_, err = attr.AddQualifier(qual)
 	return attr, err
 }
@@ -510,17 +515,8 @@ func (p *planner) planCallIndex(expr *exprpb.Expr, args []Interpretable, optiona
 // planCreateList generates a list construction Interpretable.
 func (p *planner) planCreateList(expr *exprpb.Expr) (Interpretable, error) {
 	list := expr.GetListExpr()
-	optionalIndices := list.GetOptionalIndices()
-	elements := list.GetElements()
-	optionals := make([]bool, len(elements))
-	for _, index := range optionalIndices {
-		if index < 0 || index >= int32(len(elements)) {
-			return nil, fmt.Errorf("optional index %d out of element bounds [0, %d]", index, len(elements))
-		}
-		optionals[index] = true
-	}
-	elems := make([]Interpretable, len(elements))
-	for i, elem := range elements {
+	elems := make([]Interpretable, len(list.GetElements()))
+	for i, elem := range list.GetElements() {
 		elemVal, err := p.Plan(elem)
 		if err != nil {
 			return nil, err
@@ -528,11 +524,9 @@ func (p *planner) planCreateList(expr *exprpb.Expr) (Interpretable, error) {
 		elems[i] = elemVal
 	}
 	return &evalList{
-		id:           expr.GetId(),
-		elems:        elems,
-		optionals:    optionals,
-		hasOptionals: len(optionals) != 0,
-		adapter:      p.adapter,
+		id:      expr.GetId(),
+		elems:   elems,
+		adapter: p.adapter,
 	}, nil
 }
 
@@ -561,12 +555,11 @@ func (p *planner) planCreateStruct(expr *exprpb.Expr) (Interpretable, error) {
 		optionals[i] = entry.GetOptionalEntry()
 	}
 	return &evalMap{
-		id:           expr.GetId(),
-		keys:         keys,
-		vals:         vals,
-		optionals:    optionals,
-		hasOptionals: len(optionals) != 0,
-		adapter:      p.adapter,
+		id:        expr.GetId(),
+		keys:      keys,
+		vals:      vals,
+		optionals: optionals,
+		adapter:   p.adapter,
 	}, nil
 }
 
@@ -591,13 +584,12 @@ func (p *planner) planCreateObj(expr *exprpb.Expr) (Interpretable, error) {
 		optionals[i] = entry.GetOptionalEntry()
 	}
 	return &evalObj{
-		id:           expr.GetId(),
-		typeName:     typeName,
-		fields:       fields,
-		vals:         vals,
-		optionals:    optionals,
-		hasOptionals: len(optionals) != 0,
-		provider:     p.provider,
+		id:        expr.GetId(),
+		typeName:  typeName,
+		fields:    fields,
+		vals:      vals,
+		optionals: optionals,
+		provider:  p.provider,
 	}, nil
 }
 

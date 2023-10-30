@@ -49,7 +49,6 @@ const Name = names.DefaultPreemption
 // DefaultPreemption is a PostFilter plugin implements the preemption logic.
 type DefaultPreemption struct {
 	fh        framework.Handle
-	fts       feature.Features
 	args      config.DefaultPreemptionArgs
 	podLister corelisters.PodLister
 	pdbLister policylisters.PodDisruptionBudgetLister
@@ -73,7 +72,6 @@ func New(dpArgs runtime.Object, fh framework.Handle, fts feature.Features) (fram
 	}
 	pl := DefaultPreemption{
 		fh:        fh,
-		fts:       fts,
 		args:      *args,
 		podLister: fh.SharedInformerFactory().Core().V1().Pods().Lister(),
 		pdbLister: getPDBLister(fh.SharedInformerFactory()),
@@ -127,7 +125,7 @@ func (pl *DefaultPreemption) GetOffsetAndNumCandidates(numNodes int32) (int32, i
 // This function is not applicable for out-of-tree preemption plugins that exercise
 // different preemption candidates on the same nominated node.
 func (pl *DefaultPreemption) CandidatesToVictimsMap(candidates []preemption.Candidate) map[string]*extenderv1.Victims {
-	m := make(map[string]*extenderv1.Victims, len(candidates))
+	m := make(map[string]*extenderv1.Victims)
 	for _, c := range candidates {
 		m[c.Name()] = c.Victims()
 	}
@@ -142,7 +140,6 @@ func (pl *DefaultPreemption) SelectVictimsOnNode(
 	pod *v1.Pod,
 	nodeInfo *framework.NodeInfo,
 	pdbs []*policy.PodDisruptionBudget) ([]*v1.Pod, int, *framework.Status) {
-	logger := klog.FromContext(ctx)
 	var potentialVictims []*framework.PodInfo
 	removePod := func(rpi *framework.PodInfo) error {
 		if err := nodeInfo.RemovePod(rpi.Pod); err != nil {
@@ -208,7 +205,7 @@ func (pl *DefaultPreemption) SelectVictimsOnNode(
 			}
 			rpi := pi.Pod
 			victims = append(victims, rpi)
-			logger.V(5).Info("Pod is a potential preemption victim on node", "pod", klog.KObj(rpi), "node", klog.KObj(nodeInfo.Node()))
+			klog.V(5).InfoS("Pod is a potential preemption victim on node", "pod", klog.KObj(rpi), "node", klog.KObj(nodeInfo.Node()))
 		}
 		return fits, nil
 	}
@@ -231,16 +228,15 @@ func (pl *DefaultPreemption) SelectVictimsOnNode(
 // PodEligibleToPreemptOthers returns one bool and one string. The bool
 // indicates whether this pod should be considered for preempting other pods or
 // not. The string includes the reason if this pod isn't eligible.
-// There're several reasons:
-//  1. The pod has a preemptionPolicy of Never.
-//  2. The pod has already preempted other pods and the victims are in their graceful termination period.
-//     Currently we check the node that is nominated for this pod, and as long as there are
-//     terminating pods on this node, we don't attempt to preempt more pods.
+// If this pod has a preemptionPolicy of Never or has already preempted other
+// pods and those are in their graceful termination period, it shouldn't be
+// considered for preemption.
+// We look at the node that is nominated for this pod and as long as there are
+// terminating pods on the node, we don't consider this for preempting more pods.
 func (pl *DefaultPreemption) PodEligibleToPreemptOthers(pod *v1.Pod, nominatedNodeStatus *framework.Status) (bool, string) {
 	if pod.Spec.PreemptionPolicy != nil && *pod.Spec.PreemptionPolicy == v1.PreemptNever {
-		return false, "not eligible due to preemptionPolicy=Never."
+		return false, fmt.Sprint("not eligible due to preemptionPolicy=Never.")
 	}
-
 	nodeInfos := pl.fh.SnapshotSharedLister().NodeInfos()
 	nomNodeName := pod.Status.NominatedNodeName
 	if len(nomNodeName) > 0 {
@@ -253,33 +249,14 @@ func (pl *DefaultPreemption) PodEligibleToPreemptOthers(pod *v1.Pod, nominatedNo
 		if nodeInfo, _ := nodeInfos.Get(nomNodeName); nodeInfo != nil {
 			podPriority := corev1helpers.PodPriority(pod)
 			for _, p := range nodeInfo.Pods {
-				if corev1helpers.PodPriority(p.Pod) < podPriority && podTerminatingByPreemption(p.Pod, pl.fts.EnablePodDisruptionConditions) {
+				if p.Pod.DeletionTimestamp != nil && corev1helpers.PodPriority(p.Pod) < podPriority {
 					// There is a terminating pod on the nominated node.
-					return false, "not eligible due to a terminating pod on the nominated node."
+					return false, fmt.Sprint("not eligible due to a terminating pod on the nominated node.")
 				}
 			}
 		}
 	}
 	return true, ""
-}
-
-// podTerminatingByPreemption returns the pod's terminating state if feature PodDisruptionConditions is not enabled.
-// Otherwise, it additionally checks if the termination state is caused by scheduler preemption.
-func podTerminatingByPreemption(p *v1.Pod, enablePodDisruptionConditions bool) bool {
-	if p.DeletionTimestamp == nil {
-		return false
-	}
-
-	if !enablePodDisruptionConditions {
-		return true
-	}
-
-	for _, condition := range p.Status.Conditions {
-		if condition.Type == v1.DisruptionTarget {
-			return condition.Status == v1.ConditionTrue && condition.Reason == v1.PodReasonPreemptionByScheduler
-		}
-	}
-	return false
 }
 
 // filterPodsWithPDBViolation groups the given "pods" into two groups of "violatingPods"

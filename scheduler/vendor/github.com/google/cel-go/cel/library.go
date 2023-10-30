@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/google/cel-go/checker"
-	"github.com/google/cel-go/common"
 	"github.com/google/cel-go/common/operators"
 	"github.com/google/cel-go/common/overloads"
 	"github.com/google/cel-go/common/types"
@@ -29,18 +28,6 @@ import (
 	"github.com/google/cel-go/interpreter"
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/google/cel-go/parser"
-
-	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
-)
-
-const (
-	optMapMacro                = "optMap"
-	hasValueFunc               = "hasValue"
-	optionalNoneFunc           = "optional.none"
-	optionalOfFunc             = "optional.of"
-	optionalOfNonZeroValueFunc = "optional.ofNonZeroValue"
-	valueFunc                  = "value"
-	unusedIterVar              = "#unused"
 )
 
 // Library provides a collection of EnvOption and ProgramOption values used to configure a CEL
@@ -143,16 +130,13 @@ func (optionalLibrary) CompileOptions() []EnvOption {
 		// Introduce the optional type.
 		Types(types.OptionalType),
 
-		// Configure the optMap macro.
-		Macros(NewReceiverMacro(optMapMacro, 2, optMap)),
-
 		// Global and member functions for working with optional values.
-		Function(optionalOfFunc,
+		Function("optional.of",
 			Overload("optional_of", []*Type{paramTypeV}, optionalTypeV,
 				UnaryBinding(func(value ref.Val) ref.Val {
 					return types.OptionalOf(value)
 				}))),
-		Function(optionalOfNonZeroValueFunc,
+		Function("optional.ofNonZeroValue",
 			Overload("optional_ofNonZeroValue", []*Type{paramTypeV}, optionalTypeV,
 				UnaryBinding(func(value ref.Val) ref.Val {
 					v, isZeroer := value.(traits.Zeroer)
@@ -161,18 +145,18 @@ func (optionalLibrary) CompileOptions() []EnvOption {
 					}
 					return types.OptionalNone
 				}))),
-		Function(optionalNoneFunc,
+		Function("optional.none",
 			Overload("optional_none", []*Type{}, optionalTypeV,
 				FunctionBinding(func(values ...ref.Val) ref.Val {
 					return types.OptionalNone
 				}))),
-		Function(valueFunc,
+		Function("value",
 			MemberOverload("optional_value", []*Type{optionalTypeV}, paramTypeV,
 				UnaryBinding(func(value ref.Val) ref.Val {
 					opt := value.(*types.Optional)
 					return opt.GetValue()
 				}))),
-		Function(hasValueFunc,
+		Function("hasValue",
 			MemberOverload("optional_hasValue", []*Type{optionalTypeV}, BoolType,
 				UnaryBinding(func(value ref.Val) ref.Val {
 					opt := value.(*types.Optional)
@@ -199,42 +183,11 @@ func (optionalLibrary) CompileOptions() []EnvOption {
 			Overload("map_optindex_optional_value", []*Type{mapTypeKV, paramTypeK}, optionalTypeV),
 			Overload("optional_map_optindex_optional_value", []*Type{OptionalType(mapTypeKV), paramTypeK}, optionalTypeV)),
 
-		// Index overloads to accommodate using an optional value as the operand.
+		// Index overloads to accomodate using an optional value as the operand.
 		Function(operators.Index,
 			Overload("optional_list_index_int", []*Type{OptionalType(listTypeV), IntType}, optionalTypeV),
 			Overload("optional_map_index_optional_value", []*Type{OptionalType(mapTypeKV), paramTypeK}, optionalTypeV)),
 	}
-}
-
-func optMap(meh MacroExprHelper, target *exprpb.Expr, args []*exprpb.Expr) (*exprpb.Expr, *common.Error) {
-	varIdent := args[0]
-	varName := ""
-	switch varIdent.GetExprKind().(type) {
-	case *exprpb.Expr_IdentExpr:
-		varName = varIdent.GetIdentExpr().GetName()
-	default:
-		return nil, &common.Error{
-			Message:  "optMap() variable name must be a simple identifier",
-			Location: meh.OffsetLocation(varIdent.GetId()),
-		}
-	}
-	mapExpr := args[1]
-	return meh.GlobalCall(
-		operators.Conditional,
-		meh.ReceiverCall(hasValueFunc, target),
-		meh.GlobalCall(optionalOfFunc,
-			meh.Fold(
-				unusedIterVar,
-				meh.NewList(),
-				varName,
-				meh.ReceiverCall(valueFunc, target),
-				meh.LiteralBool(false),
-				meh.Ident(varName),
-				mapExpr,
-			),
-		),
-		meh.GlobalCall(optionalNoneFunc),
-	), nil
 }
 
 // ProgramOptions implements the Library interface method.
