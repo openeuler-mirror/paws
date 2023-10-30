@@ -33,6 +33,7 @@ import (
 	componentbasevalidation "k8s.io/component-base/config/validation"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
+	"k8s.io/kubernetes/pkg/scheduler/apis/config/v1beta2"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/v1beta3"
 )
 
@@ -41,14 +42,6 @@ func ValidateKubeSchedulerConfiguration(cc *config.KubeSchedulerConfiguration) u
 	var errs []error
 	errs = append(errs, componentbasevalidation.ValidateClientConnectionConfiguration(&cc.ClientConnection, field.NewPath("clientConnection")).ToAggregate())
 	errs = append(errs, componentbasevalidation.ValidateLeaderElectionConfiguration(&cc.LeaderElection, field.NewPath("leaderElection")).ToAggregate())
-
-	// TODO: This can be removed when ResourceLock is not available
-	// Only ResourceLock values with leases are allowed
-	if cc.LeaderElection.LeaderElect && cc.LeaderElection.ResourceLock != "leases" {
-		leaderElectionPath := field.NewPath("leaderElection")
-		errs = append(errs, field.Invalid(leaderElectionPath.Child("resourceLock"), cc.LeaderElection.ResourceLock, `resourceLock value must be "leases"`))
-	}
-
 	profilesPath := field.NewPath("profiles")
 	if cc.Parallelism <= 0 {
 		errs = append(errs, field.Invalid(field.NewPath("parallelism"), cc.Parallelism, "should be an integer value greater than zero"))
@@ -142,6 +135,10 @@ type invalidPlugins struct {
 // version (even if the list of invalid plugins is empty).
 var invalidPluginsByVersion = []invalidPlugins{
 	{
+		schemeGroupVersion: v1beta2.SchemeGroupVersion.String(),
+		plugins:            []string{},
+	},
+	{
 		schemeGroupVersion: v1beta3.SchemeGroupVersion.String(),
 		plugins:            []string{},
 	},
@@ -222,7 +219,7 @@ func validatePluginConfig(path *field.Path, apiVersion string, profile *config.K
 		}
 	}
 
-	seenPluginConfig := sets.New[string]()
+	seenPluginConfig := make(sets.String)
 
 	for i := range profile.PluginConfig {
 		pluginConfigPath := path.Child("pluginConfig").Index(i)
@@ -293,7 +290,7 @@ func validateCommonQueueSort(path *field.Path, profiles []config.KubeSchedulerPr
 func validateExtenders(fldPath *field.Path, extenders []config.Extender) []error {
 	var errs []error
 	binders := 0
-	extenderManagedResources := sets.New[string]()
+	extenderManagedResources := sets.NewString()
 	for i, extender := range extenders {
 		path := fldPath.Index(i)
 		if len(extender.PrioritizeVerb) > 0 && extender.Weight <= 0 {

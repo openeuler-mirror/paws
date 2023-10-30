@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2021 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+// +k8s:deepcopy-gen=package
+// +k8s:conversion-gen=k8s.io/kubernetes/pkg/scheduler/apis/config
+// +k8s:conversion-gen-external-types=k8s.io/kube-scheduler/config/v1beta2
+// +k8s:defaulter-gen=TypeMeta
+// +k8s:defaulter-gen-input=k8s.io/kube-scheduler/config/v1beta2
+// +groupName=kubescheduler.config.k8s.io
 
-// QuotaID is generic quota identifier.
-// Data type based on quotactl(2).
-type QuotaID int32
-
-const (
-	// UnknownQuotaID -- cannot determine whether a quota is in force
-	UnknownQuotaID QuotaID = -1
-	// BadQuotaID -- Invalid quota
-	BadQuotaID QuotaID = 0
-)
+package v1beta2 // import "k8s.io/kubernetes/pkg/scheduler/apis/config/v1beta2"
