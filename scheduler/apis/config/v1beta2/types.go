@@ -7,25 +7,16 @@
 // IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
 // PURPOSE.
 // See the Mulan PSL v2 for more details.
-// Author: Wei Wei
-// Create: 2023-09-18
+// Author: Ging Fung Yeung
+// Create: 2023-10-27
 
-package v1beta3
+package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MetricProviderType is a "string" type.
-type MetricProviderType string
-
-const (
-	KubernetesMetricsServer MetricProviderType = "KubernetesMetricsServer"
-	Prometheus              MetricProviderType = "Prometheus"
-)
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // TemporalUtilizationArgs holds arguments used to configure TemporalUtilization plugin.
 type TemporalUtilizationArgs struct {
 	metav1.TypeMeta

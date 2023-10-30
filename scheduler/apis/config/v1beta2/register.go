@@ -7,24 +7,24 @@
 // IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
 // PURPOSE.
 // See the Mulan PSL v2 for more details.
-// Author: Wei Wei
-// Create: 2023-09-18
+// Author: Ging Fung Yeung
+// Create: 2023-10-27
 
-package v1beta3
+package v1beta2
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	schedschemev1beta3 "k8s.io/kube-scheduler/config/v1beta3"
+	schedschemev1beta2 "k8s.io/kube-scheduler/config/v1beta2"
 	schedconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 )
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: schedconfig.GroupName, Version: "v1beta3"}
+var SchemeGroupVersion = schema.GroupVersion{Group: schedconfig.GroupName, Version: "v1beta2"}
 
 var (
 	// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
-	localSchemeBuilder = &schedschemev1beta3.SchemeBuilder
+	localSchemeBuilder = &schedschemev1beta2.SchemeBuilder
 	// AddToScheme is a global function that registers this API group & version to a scheme
 	AddToScheme = localSchemeBuilder.AddToScheme
 )

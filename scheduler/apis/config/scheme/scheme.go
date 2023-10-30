@@ -19,6 +19,8 @@ import (
 	kubeschedulerscheme "k8s.io/kubernetes/pkg/scheduler/apis/config/scheme"
 
 	"gitee.com/openeuler/paws/scheduler/apis/config"
+	"gitee.com/openeuler/paws/scheduler/apis/config/v1beta2"
+	"gitee.com/openeuler/paws/scheduler/apis/config/v1beta3"
 )
 
 var (
@@ -36,4 +38,6 @@ func init() {
 // AddToScheme builds the kubescheduler scheme using all known versions of the kubescheduler api.
 func AddToScheme(scheme *runtime.Scheme) {
 	utilruntime.Must(config.AddToScheme(scheme))
+	utilruntime.Must(v1beta2.AddToScheme(scheme))
+	utilruntime.Must(v1beta3.AddToScheme(scheme))
 }

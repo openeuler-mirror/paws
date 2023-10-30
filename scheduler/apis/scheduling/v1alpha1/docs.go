@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 paws licensed under the Mulan PSL v2.
 You can use this software according to the terms and conditions of the Mulan PSL v2.
@@ -13,7 +13,6 @@ Create: 2023-09-18
 */
 
 // +kubebuilder:object:generate=true
-// +groupName=scheduling.sigs.k8s.io
+// +groupName=scheduling.x-k8s.io
 
 package v1alpha1
-
