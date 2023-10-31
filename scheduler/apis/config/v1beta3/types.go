@@ -24,45 +24,23 @@ const (
 	Prometheus              MetricProviderType = "Prometheus"
 )
 
-// Denote the spec of the metric provider
-type MetricProviderSpec struct {
-	// Types of the metric provider
-	Type MetricProviderType `json:"type,omitempty"`
-	// The address of the metric provider
-	Address *string `json:"address,omitempty"`
-	// The authentication token of the metric provider
-	Token *string `json:"token,omitempty"`
-	// Whether to enable the InsureSkipVerify options for https requests on Metric Providers.
-	InsecureSkipVerify *bool `json:"insecureSkipVerify,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:defaulter-gen=true
-type TargetMetricSpec struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
-	// MetricLabel from the metric provider
-	MetricLabel *string `json:"metricLabel,omitempty"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TemporalUtilizationArgs holds arguments used to configure TemporalUtilization plugin.
 type TemporalUtilizationArgs struct {
 	metav1.TypeMeta
 
-	// BestEffortPercentile value to sample for the BE jobs
-	BestEffortPercentile *int32 `json:"bestEffortPercentile,omitempty"`
-	// LatencyCriticalPercentile value to sample for the LC jobs
-	LatencyCriticalPercentile *int32 `json:"latencyCriticalPercentile,omitempty"`
-
-	// Metric Provider to use when using load watcher as a library
-	MetricProvider MetricProviderSpec `json:"metricProvider,omitempty"`
-	// Address of load watcher service
-	WatcherAddress *string `json:"watcherAddress,omitempty"`
-	// TargetMetrics to query the metric provider for
-	TargetMetrics []TargetMetricSpec `json:"targetMetrics,omitempty"`
 	// HotSpot threshold for disallowing scores
-	HotSpotThreshold *float64 `json:"hotSpotThreshold,omitempty"`
-}
+	HotSpotThreshold *int32 `json:"hotSpotThreshold,omitempty"`
 
+	// HardThreshold is a flag to indicate whether the threshold is hard or soft
+	// If it is hard, we will not allow any pod to be scheduled on the node if the threshold is reached
+	// If it is soft, we will allow pods to be scheduled on the node even if the threshold is reached, and reduce the score of the node
+	HardThreshold *bool `json:"hardThreshold,omitempty"`
+
+	// EnableOvercommit is a flag to indicate whether the plugin conducts overcommit at the filtering stage
+	EnableOvercommit *bool `json:"enableOvercommit,omitempty"`
+
+	// FilterByTemporalUsage is a flag to indicate whether the plugin conducts filtering stage by temporal usages if present
+	FilterByTemporalUsages *bool `json:"filterByTemporalUsages,omitempty"`
+}

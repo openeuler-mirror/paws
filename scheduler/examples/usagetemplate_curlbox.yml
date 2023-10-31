@@ -1,0 +1,17 @@
+apiVersion: scheduling.x-k8s.io/v1alpha1
+kind: UsageTemplate
+metadata:
+  name: curlbox
+spec:
+  enabled: true
+  evaluatePeriodHours: 6
+  resources:
+  - cpu
+  filters:
+  - container="curlbox"
+  joinLabels:
+  - part_of
+  joinFilters:
+  - part_of="curlbox-application-2"
+  - namespace="default"
+  qualityOfServiceClass: "BestEffort"

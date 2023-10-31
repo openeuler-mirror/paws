@@ -1,0 +1,53 @@
+# Default values for paws-system.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+scheduler:
+  replicaCount: 1
+  image: sirlabb/paws-scheduler:v20231030-v0.0.1-amd64
+  leaderElect: false
+  name: paws-scheduler
+  verbosity: 6
+  resources:
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+    requests:
+      cpu: 100m
+  profiles:
+    - schedulerName: paws-temporal
+      plugins:
+        multiPoint:
+          enabled:
+            - name: TemporalUtilization
+              weight: 1
+          disabled: # only in-tree plugins need to be defined here
+            - name: NodeResourcesBalancedAllocation
+            - name: NodeResourcesFit
+      pluginConfig:
+        - name: TemporalUtilization
+          args:
+            hotSpotThreshold: 60
+            enableOvercommit: true
+            filterByTemporalUsages: false
+    
+prometheusAddress: http://kube-prometheus-stack-prometheus.monitoring:9090
+experimentTolerations:
+  - key: "masterNode"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+controller:
+  replicaCount: 1
+  name: paws-controller
+  image: sirlabb/paws-controller:v20231030-v0.0.1-amd64
+  verbosity: 4
+  resources:
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  
+

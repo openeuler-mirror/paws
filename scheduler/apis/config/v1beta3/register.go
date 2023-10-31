@@ -45,4 +45,3 @@ func init() {
 	localSchemeBuilder.Register(RegisterDefaults)
 	localSchemeBuilder.Register(RegisterConversions)
 }
-

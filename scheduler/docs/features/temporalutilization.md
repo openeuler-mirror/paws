@@ -24,6 +24,12 @@ To achieve this, one can configure cAdvisor (only as a separate daemonset), see 
 - either, `--store_container_labels=true`
 - or `--store_container_labels=false` but set the `--whitelisted_container_labels` flag to include the recommended [labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/). 
 
+```yaml
+#... cadvisor image and other args
+- --store_container_labels=false
+- --whitelisted_container_labels=io.kubernetes.container.name,io.kubernetes.pod.name,io.kubernetes.pod.namespace,app.kubernetes.io/instance,app.kubernetes.io/part-of,app.kubernetes.io/managed-by,app.kubernetes.io/name
+```
+
 ## Assumptions
 
 The plugin has the following assumptions:

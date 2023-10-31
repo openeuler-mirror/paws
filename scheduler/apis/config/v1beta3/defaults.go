@@ -13,20 +13,28 @@
 package v1beta3
 
 var (
-	// Defaults for MetricProviderSpec
-	// DefaultMetricProviderType is the Kubernetes metrics server
-	DefaultMetricProviderType = KubernetesMetricsServer
-	// DefaultInsecureSkipVerify is whether to skip the certificate verification
-	DefaultInsecureSkipVerify = true
+	// DefaultHotSpotThreshold is the default value for HotSpotThreshold
+	DefaultHotSpotThreshold = 60
+	// DefaultHardThresholdValue is the default value for HardThreshold
+	DefaultHardThresholdValue = false
+	// DefaultEnableOvercommitValue is the default value for EnableOvercommit
+	DefaultEnableOvercommitValue = true
 )
 
-// SetDefaults_TemporalUtilizationArgs reuses SetDefaults_DefaultPreemptionArgs
+// SetDefaults_TemporalUtilizationArgs
 func SetDefaults_TemporalUtilizationArgs(args *TemporalUtilizationArgs) {
-	if args.WatcherAddress == nil && args.MetricProvider.Type == "" {
-		args.MetricProvider.Type = MetricProviderType(DefaultMetricProviderType)
+	if args.HardThreshold == nil {
+		args.HardThreshold = new(bool)
+		*args.HardThreshold = DefaultHardThresholdValue
 	}
-	if args.MetricProvider.Type == Prometheus && args.MetricProvider.InsecureSkipVerify == nil {
-		args.MetricProvider.InsecureSkipVerify = &DefaultInsecureSkipVerify
+
+	if args.HotSpotThreshold == nil {
+		args.HotSpotThreshold = new(int32)
+		*args.HotSpotThreshold = int32(DefaultHotSpotThreshold)
+	}
+
+	if args.EnableOvercommit == nil {
+		args.EnableOvercommit = new(bool)
+		*args.EnableOvercommit = DefaultEnableOvercommitValue
 	}
 }
-
