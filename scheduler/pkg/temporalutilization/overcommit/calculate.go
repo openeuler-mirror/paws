@@ -19,7 +19,7 @@ func getNodeAllocatableResource(nodeInfo *framework.NodeInfo, resourceName strin
 	case v1.ResourceEphemeralStorage.String():
 		return nodeInfo.Allocatable.EphemeralStorage, nil
 	default:
-		return 0, fmt.Errorf("does not support scalar resources yet, got %v", resourceName)
+		return 0, fmt.Errorf("can not get resource %v, not supported", resourceName)
 	}
 }
 
@@ -33,7 +33,7 @@ func convertToQuantity(resourceName string, value int64) (resource.Quantity, err
 	case v1.ResourceEphemeralStorage.String():
 		return *resource.NewQuantity(value, resource.BinarySI), nil
 	default:
-		return resource.Quantity{}, fmt.Errorf("resource %v not supported", resourceName)
+		return resource.Quantity{}, fmt.Errorf("can not convert resource %v, not supported", resourceName)
 	}
 }
 

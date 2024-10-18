@@ -15,7 +15,7 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 echo "Installing Recommender"
-kubectl apply -f $SCRIPT_DIR/../manifests/core/sir-recommender-deployment.yaml
+kubectl apply -f $SCRIPT_DIR/../manifests/core/recommender-deployment.yaml
 if [ $? -ne 0 ]; then
   echo "Command 1 failed. Exiting..."
   exit 1

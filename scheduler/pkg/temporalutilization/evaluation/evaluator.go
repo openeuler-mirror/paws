@@ -98,15 +98,9 @@ func (ue *UsageEvaluator) DeleteUsageTemplateEvaluation(ctx context.Context, obj
 			cancel()
 		}
 		ue.loopContexts.Delete(key)
-		// err := ue.ClearUsageTemplateCache(ctx, ut)
-		if err != nil {
-			log.Error(err, "error clearing usage template cache", "UsageTemplate", ut, "key", key)
-		}
-
 		ue.recorder.Event(ut, corev1.EventTypeNormal, events.EvaluationStopped, "Stopped evaluation loop")
 	}
 
-	// successfully clear
 	return nil
 }
 
@@ -364,11 +358,13 @@ func (ue *UsageEvaluator) evaluateOne(ctx context.Context) {
 	obj, err := ue.evaluationQ.Pop()
 	if err != nil {
 		log.Error(err, "unable to evaluate next usage template")
+		return
 	}
 
 	qUT, ok := obj.(*tu.QueuedUsageTemplate)
 	if !ok {
 		log.Error(fmt.Errorf("expected queue usage template"), "error convert to queue usage template", "Obj", obj)
+		return
 	}
 
 	if !qUT.UsageTemplate.Spec.Enabled {
