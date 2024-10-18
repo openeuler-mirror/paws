@@ -69,7 +69,7 @@ func TestTemporalUtilizationWithTrimaranScoring(t *testing.T) {
 		expected       framework.NodeScoreList
 	}{
 		{
-			name:           "new node, Trimaran Score, No CRD, using 10 percent (best effort pod) of capacity with target at 60",
+			name: "new node, Trimaran Score, No CRD, using 10 percent (best effort pod) of capacity with target at 60",
 			pod:            st.MakePod().Name("Pod-1").Namespace("default").Obj(),
 			usageTemplates: []*v1alpha1.UsageTemplate{},
 			scheduledPods:  []*v1.Pod{},

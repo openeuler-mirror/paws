@@ -83,13 +83,13 @@ if __name__ == '__main__':
 
                 # get recommendations
                 # The Recommender take drift obeject and drift_vpa_recommendation to
-                sir_recommender = Recommender(vpa, corev1, prom_client)
+                paws_recommender = Recommender(vpa, corev1, prom_client)
 
                 # If update interval is not specified in the vpa object, just fetch recommendations
                 if not update_interval_sec:
-                    recommendations = sir_recommender.get_recommendation
+                    recommendations = paws_recommender.get_recommendation
                 elif update_interval_sec and is_time_to_get_recommendations(vpa, vpa_creation_update):
-                    recommendations = sir_recommender.get_recommendation
+                    recommendations = paws_recommender.get_recommendation
                 elif not is_time_to_get_recommendations(vpa, vpa_creation_update):
                     target_time = vpa_last_updated_time if vpa_last_updated_time else vpa_creation_time
                     LOGGER.info(
