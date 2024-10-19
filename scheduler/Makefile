@@ -1,104 +1,99 @@
-# Copyright 2020 The Kubernetes Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+# PAWS licensed under the Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#     http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
+# PURPOSE.
+# See the Mulan PSL v2 for more details.
+# Author: Wei Wei; Gingfung Yeung
+# Date: 2024-10-18
+
 
 ARCHS = amd64 arm64
-COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z)
-BUILDENVVAR=CGO_ENABLED=0
-# Specify your own local registry here
-$(warning Specify your own LOCAL_REGISTRY)
-LOCAL_REGISTRY=localhost:5000
-LOCAL_CONTROLLER_IMAGE=paws-controller:latest
+COMMONENVVAR = GOOS=$(shell uname -s | tr A-Z a-z)
+BUILDENVVAR = CGO_ENABLED=0
 
-# RELEASE_REGISTRY is the container registry to push
-# into. The default is to push to the staging
-# registry, not production(k8s.gcr.io).
-# Specify your won local registry here
-$(warning Specify your own RELEASE_REGISTRY)
-RELEASE_REGISTRY?=docker.io/sirlabb
-RELEASE_VERSION?=v$(shell date +%Y%m%d)-v0.0.1
-RELEASE_IMAGE:=paws-scheduler:$(RELEASE_VERSION)
-RELEASE_CONTROLLER_IMAGE:=paws-controller:$(RELEASE_VERSION)
+# Local registry and images
+LOCAL_REGISTRY ?= localhost:5000
+LOCAL_SCHEDULER_IMAGE ?= paws-scheduler:latest
+LOCAL_CONTROLLER_IMAGE ?= paws-controller:latest
 
-# VERSION is the scheduler's version
-#
-# The RELEASE_VERSION variable can have one of two formats:
-# v20201009-v0.18.800-46-g939c1c0 - automated build for a commit(not a tag) and also a local build
-# v20200521-v0.18.800             - automated build for a tag
-VERSION=$(shell echo $(RELEASE_VERSION) | awk -F - '{print $$2}')
+# Release registry and versioning
+RELEASE_REGISTRY ?= docker.io/sirlabb
+RELEASE_VERSION ?= v$(shell date +%Y%m%d)-v0.0.1
+RELEASE_SCHEDULER_IMAGE := paws-scheduler:$(RELEASE_VERSION)
+RELEASE_CONTROLLER_IMAGE := paws-controller:$(RELEASE_VERSION)
+
+# Extract version from RELEASE_VERSION
+VERSION = $(shell echo $(RELEASE_VERSION) | awk -F - '{print $$2}')
+
+# Paths
+SCHEDULER_PATH = cmd/paws-scheduler/main.go
+CONTROLLER_PATH = cmd/paws-controller/main.go
 
 .PHONY: all
 all: build
 
+# Build targets
 .PHONY: build
 build: build-scheduler build-controller
 
 .PHONY: build.amd64
-build.amd64: build-scheduler.amd64
+build.amd64: build-scheduler.amd64 build-controller.amd64
 
 .PHONY: build.arm64v8
-build.arm64v8: build-scheduler.arm64v8
+build.arm64v8: build-scheduler.arm64v8 build-controller.arm64v8
 
+# Scheduler build
 .PHONY: build-scheduler
-build-scheduler:
-	$(COMMONENVVAR) $(BUILDENVVAR) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/paws-scheduler cmd/paws-scheduler/main.go
+build-scheduler: $(ARCHS:%=build-scheduler.%)
 
-.PHONY: build-scheduler.amd64
-build-scheduler.amd64:
-	$(COMMONENVVAR) $(BUILDENVVAR) GOARCH=amd64 go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/paws-scheduler cmd/paws-scheduler/main.go
+.PHONY: build-scheduler.%
+build-scheduler.%:
+	$(COMMONENVVAR) $(BUILDENVVAR) GOARCH=$* go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/paws-scheduler $(SCHEDULER_PATH)
 
-.PHONY: build-scheduler.arm64v8
-build-scheduler.arm64v8:
-	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/paws-scheduler cmd/paws-scheduler/main.go
-
+# Controller build
 .PHONY: build-controller
-build-controller:
-	$(COMMONENVVAR) $(BUILDENVVAR) go build -ldflags '-w' -o bin/controller cmd/paws-controller/main.go
+build-controller: $(ARCHS:%=build-controller.%)
 
-.PHONY: build-controller.amd64
-build-controller.amd64:
-	$(COMMONENVVAR) $(BUILDENVVAR) GOARCH=amd64 go build -ldflags '-w' -o bin/controller cmd/paws-controller/main.go
+.PHONY: build-controller.%
+build-controller.%:
+	$(COMMONENVVAR) $(BUILDENVVAR) GOARCH=$* go build -ldflags '-w' -o bin/controller $(CONTROLLER_PATH)
 
-.PHONY: build-controller.arm64v8
-build-controller.arm64v8:
-	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -ldflags '-w' -o bin/controller cmd/paws-controller/main.go
-
+# Local Docker build
 .PHONY: local-image
 local-image: clean
-	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(LOCAL_REGISTRY)/$(LOCAL_IMAGE) .
+	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(LOCAL_REGISTRY)/$(LOCAL_SCHEDULER_IMAGE) .
 	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH="amd64" -t $(LOCAL_REGISTRY)/$(LOCAL_CONTROLLER_IMAGE) .
 
-.PHONY: release-image.amd64
-release-image.amd64: clean
-	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-amd64 .
-	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH="amd64" -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-amd64 .
+# Release Docker build
+.PHONY: release-image
+release-image: clean $(ARCHS:%=release-image.%)
 
-.PHONY: release-image.arm64v8
-release-image.arm64v8: clean
-	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH="arm64v8" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-arm64 .
-	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH="arm64v8" -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-arm64 .
+.PHONY: release-image.%
+release-image.%:
+	docker build -f ./build/paws-scheduler/Dockerfile --build-arg ARCH=$* --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE)-$* .
+	docker build -f ./build/paws-controller/Dockerfile --build-arg ARCH=$* -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-$* .
 
+# Push release images and create manifest
 .PHONY: push-release-images
-push-release-images: release-image.amd64 release-image.arm64v8
+push-release-images: release-image
 	for arch in $(ARCHS); do \
-		docker push $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-$${arch} ;\
+		docker push $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE)-$${arch} ;\
+		docker push $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-$${arch} ;\
 	done
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create $(RELEASE_REGISTRY)/$(RELEASE_IMAGE) $(addprefix --amend $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-, $(ARCHS))
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE) $(addprefix --amend $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE)-, $(ARCHS))
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE) $(addprefix --amend $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-, $(ARCHS))
 	for arch in $(ARCHS); do \
-		DOCKER_CLI_EXPERIMENTAL=enabled docker manifest annotate --arch $${arch} $(RELEASE_REGISTRY)/$(RELEASE_IMAGE) $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-$${arch} ;\
+		DOCKER_CLI_EXPERIMENTAL=enabled docker manifest annotate --arch $${arch} $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE) $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE)-$${arch} ;\
+		DOCKER_CLI_EXPERIMENTAL=enabled docker manifest annotate --arch $${arch} $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE) $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-$${arch} ;\
 	done
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push $(RELEASE_REGISTRY)/$(RELEASE_IMAGE) ;\
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push $(RELEASE_REGISTRY)/$(RELEASE_SCHEDULER_IMAGE)
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)
 
+# Helper tasks
 .PHONY: update-vendor
 update-vendor:
 	hack/update-vendor.sh
