@@ -17,36 +17,71 @@ from utils.utilities import setup_logging
 
 LOGGER = setup_logging(__file__)
 
-class LinearRegressionModel():
+class LinearRegressionModel:
     """A simple Linear Regression based model for predicting future values
-    
+
     Attributes
     ----
         ts_samples : numpy array
-            timeseries (of past recommendation values)
+            Timeseries (of past recommendation values)
         forecast_horizon : int
-            number of future timestamps to be predicted
+            Number of future timestamps to be predicted
 
     Methods
     ----
         train(self)
         predict(self)
     """
-    def __init__(self, ts_samples, context_size, forecast_horizon):
-        self.ts_samples = ts_samples
+    def __init__(self, ts_samples: np.ndarray, forecast_horizon: int):
+        """
+        Initializes the linear regression model for time series prediction.
+
+        Parameters:
+        ----
+        ts_samples: numpy array
+            The time series data (samples).
+        forecast_horizon: int
+            Number of future time steps to predict.
+        """
+        self.ts_samples = np.asarray(ts_samples)  # Ensure it's a numpy array
         self.forecast_horizon = forecast_horizon
         self.model = None
 
     def train(self):
-        # Make features for linear regression
-        X = np.expand_dims(np.asarray(range(len(self.ts_samples))), axis=1) # Feature is the value of time instant
-        y = np.asarray(self.ts_samples) # Target is the resource utilization value at each time instant
+        """
+        Trains the linear regression model on the time series samples.
+        """
+        # Create features (X) as time steps and target (y) as the time series values
+        X = np.arange(len(self.ts_samples)).reshape(-1, 1)  # Reshape to 2D
+        y = self.ts_samples
 
+        # Train the linear regression model
         self.model = LinearRegression().fit(X, y)
-        LOGGER.debug(self.model.score(X, y), self.model.coef_, self.model.intercept_)
-        LOGGER.debug(f"LR model = {self.model}")
-    
-    def predict(self):
-        X_test = list(np.arange(len(self.ts_samples), len(self.ts_samples) + self.forecast_horizon, 1))
-        y_pred = self.model.predict(np.array([X_test]))
-        return [y_pred[0],  self.model.coef_[0], self.model.intercept_]
+
+        # Log the model's performance and coefficients
+        score = self.model.score(X, y)
+        coef = self.model.coef_[0]
+        intercept = self.model.intercept_
+        LOGGER.debug(f"Model score: {score:.4f}, Coefficient: {coef:.4f}, Intercept: {intercept:.4f}")
+
+    def predict(self) -> list:
+        """
+        Predicts future values based on the trained linear regression model.
+
+        Returns:
+        ----
+        list
+            Predicted future values, the coefficient, and intercept.
+        """
+        if self.model is None:
+            raise ValueError("The model has not been trained yet. Call train() before predict().")
+
+        # Prepare future time steps as features for prediction
+        X_test = np.arange(len(self.ts_samples), len(self.ts_samples) + self.forecast_horizon).reshape(-1, 1)
+
+        # Predict the future values
+        y_pred = self.model.predict(X_test)
+
+        # Return the predicted values along with model parameters
+        return [y_pred.tolist(), self.model.coef_[0], self.model.intercept_]
+
