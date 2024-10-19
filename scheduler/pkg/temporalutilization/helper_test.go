@@ -1,5 +1,17 @@
 package temporalutilization
 
+// Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+// PAWS licensed under the Mulan PSL v2.
+// You can use this software according to the terms and conditions of the Mulan PSL v2.
+// You may obtain a copy of Mulan PSL v2 at:
+//     http://license.coscl.org.cn/MulanPSL2
+// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
+// PURPOSE.
+// See the Mulan PSL v2 for more details.
+// Author: Wei Wei; Gingfung Yeung
+// Date: 2024-10-18
+
 import (
 	"math"
 	"testing"
@@ -96,13 +108,12 @@ func TestUsageTemplateLogic(t *testing.T) {
 			if tt.expectedErr {
 				assert.NotNil(t, err)
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 
-			// we offset by hour, so let's shift the expected usages
+			// Shift expected usages only if not long running
 			if !tt.usageTemplates[0].Status.IsLongRunning {
 				shiftedUsageTemplate := shiftUsageTemplate(tt.expectedUsages, time.Now().UTC().Hour())
-
 				tt.expectedUsages = shiftedUsageTemplate
 			}
 
@@ -112,27 +123,26 @@ func TestUsageTemplateLogic(t *testing.T) {
 }
 
 func shiftUsageTemplate(old map[string]*UsageTemplate, currentHour int) map[string]*UsageTemplate {
-	new := map[string]*UsageTemplate{}
+	new := make(map[string]*UsageTemplate)
 	for resource, template := range old {
-		new[resource] = &UsageTemplate{
+		newTemplate := &UsageTemplate{
 			resource:    template.resource,
 			unit:        template.unit,
-			weekDayHour: make(map[int16]float32),
-			weekendHour: make(map[int16]float32),
+			weekDayHour: make(map[int16]float32, NumHoursInADay),
+			weekendHour: make(map[int16]float32, NumHoursInADay),
 		}
 
 		for k, v := range template.weekDayHour {
-			offsetHour := math.Mod(float64(currentHour)+float64(k), NumHoursInADay)
-
-			new[resource].weekDayHour[int16(offsetHour)] = float32(v)
+			offsetHour := int16((currentHour + int(k)) % NumHoursInADay)
+			newTemplate.weekDayHour[offsetHour] = v
 		}
 
 		for k, v := range template.weekendHour {
-			offsetHour := math.Mod(float64(currentHour)+float64(k), NumHoursInADay)
-
-			new[resource].weekendHour[int16(offsetHour)] = float32(v)
+			offsetHour := int16((currentHour + int(k)) % NumHoursInADay)
+			newTemplate.weekendHour[offsetHour] = v
 		}
 
+		new[resource] = newTemplate
 	}
 	return new
 }

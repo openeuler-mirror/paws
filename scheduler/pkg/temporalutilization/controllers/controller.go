@@ -1,5 +1,17 @@
 package controllers
 
+// Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+// PAWS licensed under the Mulan PSL v2.
+// You can use this software according to the terms and conditions of the Mulan PSL v2.
+// You may obtain a copy of Mulan PSL v2 at:
+//     http://license.coscl.org.cn/MulanPSL2
+// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
+// PURPOSE.
+// See the Mulan PSL v2 for more details.
+// Author: Wei Wei; Gingfung Yeung
+// Date: 2024-10-18
+
 import (
 	"context"
 	"fmt"
@@ -26,7 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// only reconcile the above if the object podTemplateSpec has the annotation we are looking for
+// UsageTemplateReconciler reconciles a UsageTemplate object
 type UsageTemplateReconciler struct {
 	Log      logr.Logger
 	Recorder record.EventRecorder
@@ -46,7 +58,7 @@ func (r *UsageTemplateReconciler) SetupWithManager(mgr ctrl.Manager, options con
 
 	r.UsageEvaluator, err = evaluation.NewUsageEvaluator(mgr.GetClient(), mgr.GetScheme(), evaluationResolution, globalHTTPTimeout, r.Recorder, prometheusAddress)
 	if err != nil {
-		r.Log.Error(err, "unable to create usage evaluator")
+		r.Log.Error(err, "Unable to create UsageEvaluator")
 		return err
 	}
 
@@ -54,8 +66,6 @@ func (r *UsageTemplateReconciler) SetupWithManager(mgr ctrl.Manager, options con
 
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
-		// Ignore updates to UsageTemplate Status (in this case metadata.Generation does not change)
-		// so reconcile loop is not started on Status updates
 		For(&schedv1alpha1.UsageTemplate{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
@@ -66,40 +76,38 @@ func (r *UsageTemplateReconciler) SetupWithManager(mgr ctrl.Manager, options con
 
 func (r *UsageTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("reconciling usage template ...")
+	log.Info("Reconciling UsageTemplate...")
+
 	ut := &schedv1alpha1.UsageTemplate{}
 	if err := r.Get(ctx, req.NamespacedName, ut); err != nil {
 		if apierrs.IsNotFound(err) {
-			log.V(5).Info("Usage template does not exists")
+			log.V(5).Info("UsageTemplate not found")
 			return ctrl.Result{}, nil
 		}
-		log.V(3).Error(err, "unable to retrieve usage template", "namespacedname", req.NamespacedName)
+		log.V(3).Error(err, "Failed to retrieve UsageTemplate", "namespacedname", req.NamespacedName)
 		return ctrl.Result{}, err
 	}
 
+	// Finalization logic
 	if ut.GetDeletionTimestamp() != nil {
 		return ctrl.Result{}, r.finalizeUsageTemplate(ctx, ut, req.NamespacedName.String())
 	}
 
 	r.updateCRDMetrics(ut, req.NamespacedName.String())
 
-	// put finalizer on the CR to avoid GC
+	// Ensure finalizer is present
 	if err := r.ensureFinalizer(ctx, ut); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// update status conditions
+	// Update status conditions
 	if !ut.Status.Conditions.AreReady() {
-		err := utils.UpdateReadyConditions(ctx, r.Client, r.Log, ut, metav1.ConditionUnknown, "Initialized", "InitializedCondition")
-		if err != nil {
+		if err := utils.UpdateReadyConditions(ctx, r.Client, r.Log, ut, metav1.ConditionUnknown, "Initialized", "InitializedCondition"); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
-	// Reconcile UT, start evaluation loop
+
 	msg, err := r.reconcileUsageTemplate(ctx, ut)
-
-	r.Log.V(2).Info(msg, "Name", ut.Name, "Namespace", ut.Namespace)
-
 	if err != nil {
 		r.Log.Error(err, msg)
 		utils.SetStatusConditions(ctx, r.Client, r.Log, ut, metav1.ConditionFalse, "UsageTemplateCheckFailed", msg, utils.TransformConditions)
@@ -116,9 +124,8 @@ func (r *UsageTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 func (r *UsageTemplateReconciler) stopEvaluationLoop(ctx context.Context, ut *schedv1alpha1.UsageTemplate) error {
 	key, err := cache.MetaNamespaceKeyFunc(ut)
-
 	if err != nil {
-		r.Log.Error(err, "Error getting key for usageTemplate")
+		r.Log.Error(err, "Error getting key for UsageTemplate")
 		return err
 	}
 
@@ -126,7 +133,7 @@ func (r *UsageTemplateReconciler) stopEvaluationLoop(ctx context.Context, ut *sc
 		return err
 	}
 
-	// delete ut's current Generation
+	// Delete UsageTemplate's current Generation
 	r.usageTemplatesGenerations.Delete(key)
 	return nil
 }
@@ -137,13 +144,11 @@ func (r *UsageTemplateReconciler) reconcileUsageTemplate(ctx context.Context, ut
 		return schedv1alpha1.DisabledSuccessReason, nil
 	}
 
-	msg, err := r.validateUsageResourceTargets(ut)
-	if err != nil {
+	if msg, err := r.validateUsageResourceTargets(ut); err != nil {
 		return msg, err
 	}
 
-	msg, err = r.validateEvaluationPeriods(ut)
-	if err != nil {
+	if msg, err := r.validateEvaluationPeriods(ut); err != nil {
 		return msg, err
 	}
 
@@ -153,7 +158,7 @@ func (r *UsageTemplateReconciler) reconcileUsageTemplate(ctx context.Context, ut
 		return "Failed to check whether UsageTemplate's Generation was changed", err
 	}
 
-	// Start Evaluation loop if all is well, e.g. the usagetemplate is changed or spec changed
+	// Start evaluation loop if necessary
 	if specChanged {
 		r.Recorder.Event(ut, v1.EventTypeNormal, events.ReadyForEvaluation, "UsageTemplate is ready for evaluation")
 
@@ -168,7 +173,7 @@ func (r *UsageTemplateReconciler) reconcileUsageTemplate(ctx context.Context, ut
 
 func (r *UsageTemplateReconciler) validateUsageResourceTargets(ut *schedv1alpha1.UsageTemplate) (string, error) {
 	if len(ut.Spec.Resources) == 0 {
-		return "No resources are specified", fmt.Errorf("expect at least one resource specified")
+		return "No resources specified", fmt.Errorf("expect at least one resource specified")
 	}
 
 	for _, resourceType := range ut.Spec.Resources {
@@ -195,7 +200,7 @@ func (r *UsageTemplateReconciler) validateEvaluationPeriods(ut *schedv1alpha1.Us
 func (r *UsageTemplateReconciler) usageTemplateGenerationChanged(ut *schedv1alpha1.UsageTemplate) (bool, error) {
 	key, err := cache.MetaNamespaceKeyFunc(ut)
 	if err != nil {
-		r.Log.Error(err, "error getting namespace key for usage template")
+		r.Log.Error(err, "Error getting namespace key for UsageTemplate")
 		return true, err
 	}
 
@@ -213,7 +218,7 @@ func (r *UsageTemplateReconciler) usageTemplateGenerationChanged(ut *schedv1alph
 func (r *UsageTemplateReconciler) handleUsageTemplate(ctx context.Context, ut *schedv1alpha1.UsageTemplate) error {
 	key, err := cache.MetaNamespaceKeyFunc(ut)
 	if err != nil {
-		r.Log.Error(err, "Error getting key for usage template")
+		r.Log.Error(err, "Error getting key for UsageTemplate")
 		return err
 	}
 
@@ -222,8 +227,9 @@ func (r *UsageTemplateReconciler) handleUsageTemplate(ctx context.Context, ut *s
 	}
 
 	if ut.Spec.Enabled {
-		// store current generation to avoid starting a new evaluation
+		// Store current generation to avoid starting a new evaluation
 		r.usageTemplatesGenerations.Store(key, ut.Generation)
 	}
 	return nil
 }
+
