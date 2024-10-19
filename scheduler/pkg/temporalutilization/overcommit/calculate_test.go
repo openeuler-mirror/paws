@@ -18,9 +18,10 @@ func TestOvercommitRatioCalculation(t *testing.T) {
 		node            *v1.Node
 		overcommitRatio string
 		Expected        v1.ResourceList
+		expectError     bool
 	}{
 		{
-			name: "overcommit ratio 0.3, obtain 300m overcommitable resource",
+			name: "CPU overcommit ratio 0.3, obtain 300m overcommitable resource",
 			node: st.MakeNode().Capacity(map[v1.ResourceName]string{
 				v1.ResourceCPU: "1000m",
 			}).Obj(),
@@ -28,6 +29,36 @@ func TestOvercommitRatioCalculation(t *testing.T) {
 			Expected: v1.ResourceList{
 				v1.ResourceCPU: resource.MustParse("300m"),
 			},
+			expectError: false,
+		},
+		{
+			name: "Memory overcommit ratio 0.5, obtain 512Mi overcommitable resource",
+			node: st.MakeNode().Capacity(map[v1.ResourceName]string{
+				v1.ResourceMemory: "1024Mi",
+			}).Obj(),
+			overcommitRatio: "0.5",
+			Expected: v1.ResourceList{
+				v1.ResourceMemory: resource.MustParse("512Mi"),
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid overcommit ratio (negative)",
+			node: st.MakeNode().Capacity(map[v1.ResourceName]string{
+				v1.ResourceCPU: "1000m",
+			}).Obj(),
+			overcommitRatio: "-0.5",
+			Expected:        v1.ResourceList{},
+			expectError:     true,
+		},
+		{
+			name: "Missing overcommit annotation",
+			node: st.MakeNode().Capacity(map[v1.ResourceName]string{
+				v1.ResourceCPU: "1000m",
+			}).Obj(),
+			overcommitRatio: "",
+			Expected:        v1.ResourceList{},
+			expectError:     false,
 		},
 	}
 
@@ -35,17 +66,25 @@ func TestOvercommitRatioCalculation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			nodeInfo := framework.NewNodeInfo(tt.pods...)
 			tt.node.Annotations = make(map[string]string)
-			tt.node.Annotations[v1alpha1.NodeCPUOvercommitRatioAnnotation] = tt.overcommitRatio
+			if tt.overcommitRatio != "" {
+				tt.node.Annotations[v1alpha1.NodeCPUOvercommitRatioAnnotation] = tt.overcommitRatio
+			}
 			nodeInfo.SetNode(tt.node)
 
 			got, err := CalculateOvercommitResources(nodeInfo, v1alpha1.SupportedOvercommitResourceAnnotation)
-			assert.NoError(t, err)
+
+			if tt.expectError {
+				assert.Error(t, err, "Expected an error but got none")
+				return
+			}
+
+			assert.NoError(t, err, "Unexpected error during calculation")
 
 			for r, v := range got {
 				expectedv := tt.Expected[r]
-				assert.Equal(t, expectedv.MilliValue(), v.MilliValue())
+				assert.Equal(t, expectedv.MilliValue(), v.MilliValue(), "Resource mismatch for %v", r)
 			}
-
 		})
 	}
 }
+
