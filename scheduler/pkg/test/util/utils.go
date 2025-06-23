@@ -25,27 +25,53 @@ import (
 // Make usages across periods according to the format
 // [[start,end,usages]], where each period would be [start,end)
 func MakeUsageAcrossPeriods(periodUsages [][]float32) map[int]float32 {
-	results := make(map[int]float32)
-
-	// Sort the usage periods by the start time
-	sort.Slice(periodUsages, func(i, j int) bool {
-		return periodUsages[i][0] < periodUsages[j][0]
-	})
-
-	for _, usagePeriod := range periodUsages {
-		// Ensure that each period has exactly 3 values (start, end, usage)
-		if len(usagePeriod) != 3 {
-			continue
-		}
-		start, end := int(usagePeriod[0]), int(usagePeriod[1])
-		usages := usagePeriod[2]
-
-		for i := start; i < end; i++ {
-			results[i] = usages
-		}
-	}
-	return results
+    results := make(map[int]float32)
+    
+    // 提前过滤无效数据并排序
+    validPeriods := filterAndSortPeriods(periodUsages)
+    
+    for _, period := range validPeriods {
+        start, end, usage := int(period[0]), int(period[1]), period[2]
+        
+        // 处理时间范围重叠的情况（取最大值）
+        for hour := start; hour < end; hour++ {
+            // 如果时间点已存在且当前值更大，则更新
+            if existing, ok := results[hour]; !ok || usage > existing {
+                results[hour] = usage
+            }
+        }
+    }
+    
+    return results
 }
+
+// 过滤无效周期并按开始时间排序
+func filterAndSortPeriods(periods [][]float32) [][]float32 {
+    valid := make([][]float32, 0, len(periods))
+    
+    for _, p := range periods {
+        // 验证周期数据有效性
+        if len(p) != 3 {
+            continue // 无效数据，跳过
+        }
+        
+        start, end := int(p[0]), int(p[1])
+        // 过滤掉开始时间大于等于结束时间的无效周期
+        if start >= end {
+            continue
+        }
+        
+        valid = append(valid, p)
+    }
+    
+    // 按开始时间排序
+    sort.Slice(valid, func(i, j int) bool {
+        return valid[i][0] < valid[j][0]
+    })
+    
+    return valid
+}    
+
 
 // Create a map of usage for all 24 hours of the day with the same usage value
 func SameUsageADay(usage float32) map[int]float32 {
@@ -110,7 +136,6 @@ func buildUsageSamples(hourlyValues map[int]float32, isWeekday bool) []v1alpha1.
 
 
 // Create a usage template for resources with their weekday and weekend usages
-
 func MakeUsageTemplate(name, namespace string, enabled bool, qosClass string,
     resourceWeekdayUsages, resourceWeekendUsages map[string]map[int]float32,
     isLongRunning bool) (*v1alpha1.UsageTemplate, error) {
